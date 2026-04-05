@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Zeno Classic Dialer</string>
+    <string name="accessibility_description">Allows the Call and End toolbar buttons to dial numbers and close the dialer.</string>
+    <string name="dialpad_paste">Paste</string>
+    <string name="dialpad_paste_hint">From clipboard</string>
+    <string name="dialpad_copy">Copy number</string>
+    <string name="dialpad_copy_hint">Number in field</string>
+    <string name="dialpad_number_bar_a11y">Number entry; long-press for paste or copy</string>
+    <string name="dialpad_copied">Copied</string>
+</resources>

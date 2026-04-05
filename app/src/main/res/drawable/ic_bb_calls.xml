@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Matches prototype Calls tab icon -->
+    <path
+        android:pathData="M17,1 L21,5 L17,9"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M3,11 V9 C3,6.79 4.79,5 7,5 H21"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M7,23 L3,19 L7,15"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M21,13 V15 C21,17.21 19.21,19 17,19 H3"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
+

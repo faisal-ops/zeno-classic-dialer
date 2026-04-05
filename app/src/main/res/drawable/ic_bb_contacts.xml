@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Matches prototype Contacts tab icon -->
+    <path
+        android:pathData="M20,21 V19 C20,16.79 18.21,15 16,15 H8 C5.79,15 4,16.79 4,19 V21"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M12,11 C14.21,11 16,9.21 16,7 C16,4.79 14.21,3 12,3 C9.79,3 8,4.79 8,7 C8,9.21 9.79,11 12,11 Z"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
+

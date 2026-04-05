@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Matches prototype Dial Pad tab icon (solid grid) -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3,3 h4 v4 h-4 z
+                          M10,3 h4 v4 h-4 z
+                          M17,3 h4 v4 h-4 z
+                          M3,10 h4 v4 h-4 z
+                          M10,10 h4 v4 h-4 z
+                          M17,10 h4 v4 h-4 z
+                          M3,17 h4 v4 h-4 z
+                          M10,17 h4 v4 h-4 z
+                          M17,17 h4 v4 h-4 z" />
+</vector>
+

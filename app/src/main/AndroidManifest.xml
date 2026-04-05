@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Required to post the ongoing-call notification (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Allows one-shot haptic feedback when the other side answers. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Core dialer permissions -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.WRITE_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+
+    <!-- Required to answer incoming calls programmatically via Call.answer() -->
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+
+    <!-- Allows InCallActivity to show over the lock screen -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- Call recording (VOICE_CALL when default dialer; MIC fallback) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- System blocked-number list (default dialer); mirrors in-app block list for reliable blocking. -->
+    <uses-permission android:name="android.permission.READ_BLOCKED_NUMBERS" />
+    <uses-permission android:name="android.permission.WRITE_BLOCKED_NUMBERS" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.DialerApp"
+        android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true">
+
+        <!-- ── Dialer / search screen ─────────────────────────────────────── -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustNothing"
+            android:screenOrientation="portrait">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Default dialer: handle DIAL intents -->
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <data android:scheme="tel" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+            </intent-filter>
+
+            <!-- Hardware CALL button with no active call → open dialer -->
+            <intent-filter>
+                <action android:name="android.intent.action.CALL_BUTTON" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- VIEW tel: links from other apps -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <data android:scheme="tel" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+            </intent-filter>
+
+            <!-- Call log / missed-call taps (system shade & notification hub) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/calls" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/calls" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:host="call_log" />
+            </intent-filter>
+        </activity>
+
+        <!-- ── In-call screen ────────────────────────────────────────────── -->
+        <activity
+            android:name=".InCallActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustNothing"
+            android:excludeFromRecents="true" />
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustNothing" />
+
+        <activity
+            android:name=".CallHistoryDetailActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustNothing" />
+
+        <!-- ── InCallService — required for ROLE_DIALER ──────────────────── -->
+        <service
+            android:name=".service.MyInCallService"
+            android:exported="true"
+            android:permission="android.permission.BIND_INCALL_SERVICE">
+            <meta-data
+                android:name="android.telecom.IN_CALL_SERVICE_UI"
+                android:value="true" />
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+        </service>
+
+        <!-- ── End-call broadcast receiver (notification action) ────────────── -->
+        <receiver
+            android:name=".service.CallActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.zeno.zenoclassicdialer.action.HANGUP" />
+                <action android:name="com.zeno.zenoclassicdialer.action.ANSWER" />
+                <action android:name="com.zeno.zenoclassicdialer.action.DECLINE" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".service.ExternalCallKeyReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.duc1607.q25keyboard.ACTION_CALL_KEY" />
+                <action android:name="com.duc1607.q25keyboard.ACTION_END_KEY" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ── Call Screening Service ──────────────────────────────────────── -->
+        <service
+            android:name=".service.ScreeningService"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
+        <!-- ── Accessibility service for hardware Call/End interception ───── -->
+        <service
+            android:name=".service.ButtonInterceptService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_config" />
+        </service>
+
+    </application>
+
+</manifest>
