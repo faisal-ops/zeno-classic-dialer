@@ -75,6 +75,7 @@ class ContactsRepo(private val context: Context) {
 
     fun getStarredContacts(): List<Contact> {
         val allowedContactIds = loadNonSimContactIds()
+        val filterBySim = allowedContactIds.isNotEmpty()
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
@@ -97,7 +98,7 @@ class ContactsRepo(private val context: Context) {
             val photoCol = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
             while (it.moveToNext()) {
                 val id = it.getLong(idCol)
-                if (id !in allowedContactIds) continue
+                if (filterBySim && id !in allowedContactIds) continue
                 if (id in seenIds) continue
                 seenIds.add(id)
                 val number = it.getString(numCol).orEmpty().trim()
@@ -112,6 +113,7 @@ class ContactsRepo(private val context: Context) {
 
     private fun loadAll(): List<Contact> {
         val allowedContactIds = loadNonSimContactIds()
+        val filterBySim = allowedContactIds.isNotEmpty()
         val prefs = context.getSharedPreferences(AppPreferences.FILE_SETTINGS, Context.MODE_PRIVATE)
         val sortBy = prefs.getInt("sort_by", 0)
         val nameFormat = prefs.getInt("name_format", 0)
@@ -144,7 +146,7 @@ class ContactsRepo(private val context: Context) {
 
             while (it.moveToNext()) {
                 val id = it.getLong(idCol)
-                if (id !in allowedContactIds) continue
+                if (filterBySim && id !in allowedContactIds) continue
                 if (!seenIds.add(id)) continue
 
                 val number = it.getString(numCol).orEmpty().trim()

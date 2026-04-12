@@ -85,8 +85,6 @@ class KeyHandler(
                     state.scrollFocusedIndex >= 0 &&
                         state.scrollFocusedIndex < state.results.size ->
                         state.results[state.scrollFocusedIndex].number
-                    state.results.isNotEmpty() &&
-                        viewModel.currentTabIndex == 0 -> state.results[0].number
                     else -> null
                 }
                 if (number != null) {
@@ -121,9 +119,9 @@ class KeyHandler(
                 val state = viewModel.uiState.value
                 when {
                     state.favoriteFocusIndex >= 0 -> { /* already at top row, nowhere to go */ }
-                    // Contacts tab: stay pinned to the first contact, don't jump to search bar.
-                    viewModel.currentTabIndex == 1 && state.results.isNotEmpty() && state.selectedIndex <= 0 ->
-                        viewModel.selectItem(0)
+                    // Contacts tab: at first *visual* row, UP scrolls list to top (not results[0]).
+                    viewModel.currentTabIndex == 1 && state.results.isNotEmpty() && viewModel.isContactsNavAtStart(state) ->
+                        viewModel.scrollContactsToTop()
                     viewModel.currentTabIndex == 0 && state.selectedIndex <= 0 ->
                         viewModel.setFavoriteFocus(0)
                     else -> viewModel.nudgeSelectionUp()

@@ -76,6 +76,21 @@ private val AppTypography = Typography(
     )
 )
 
+private val AppTypographyModernClassic = Typography(
+    headlineLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 37.sp, lineHeight = 43.sp),
+    headlineMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 30.sp, lineHeight = 36.sp),
+    titleLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 32.sp, lineHeight = 39.sp, letterSpacing = 0.2.sp),
+    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 28.sp),
+    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 20.sp, lineHeight = 27.sp),
+    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 24.sp),
+    bodySmall = TextStyle(fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp),
+    labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 19.sp, lineHeight = 24.sp),
+    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 21.sp),
+    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.4.sp)
+)
+
+enum class DialerStyle { ORIGINAL_CLASSIC, MODERN_CLASSIC }
+
 internal data class DialerColorTokens(
     val bgPage: Color,
     val bgSurface: Color,
@@ -88,6 +103,8 @@ internal data class DialerColorTokens(
     val surfaceActive: Color,
     val accent: Color,
     val accentMuted: Color,
+    val danger: Color,
+    val badgeStar: Color,
 )
 
 internal val LocalDialerColors = staticCompositionLocalOf<DialerColorTokens> {
@@ -103,8 +120,17 @@ internal val LocalDialerColors = staticCompositionLocalOf<DialerColorTokens> {
         surfaceActive = Color.Unspecified,
         accent = Color.Unspecified,
         accentMuted = Color.Unspecified,
+        danger = Color.Unspecified,
+        badgeStar = Color.Unspecified,
     )
 }
+
+internal data class DialerMotionTokens(
+    val microMs: Int,
+    val standardMs: Int,
+)
+internal val LocalDialerMotion = staticCompositionLocalOf { DialerMotionTokens(70, 150) }
+internal val LocalDialerStyle = staticCompositionLocalOf { DialerStyle.MODERN_CLASSIC }
 
 // ── BB Classic color schemes ─────────────────────────────────────────────────
 
@@ -180,6 +206,8 @@ private val BBLightTokens = DialerColorTokens(
     surfaceActive = Color(0xFFE3F0FB),
     accent        = Color(0xFF1278C8),
     accentMuted   = Color(0xFF0D5FA0),
+    danger        = Color(0xFFC0392B),
+    badgeStar     = Color(0xFFC31924),
 )
 
 private val BBDarkTokens = DialerColorTokens(
@@ -194,6 +222,8 @@ private val BBDarkTokens = DialerColorTokens(
     surfaceActive = Color(0xFF0D2A48),
     accent        = Color(0xFF4A9DE8),
     accentMuted   = Color(0xFF1278C8),
+    danger        = Color(0xFFCC4444),
+    badgeStar     = Color(0xFFD94A53),
 )
 
 @Composable
@@ -201,12 +231,16 @@ fun DialerTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences(AppPreferences.FILE_SETTINGS, Context.MODE_PRIVATE)
     var themeChoice by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_CHOOSE_THEME, 0)) } // 0=system default, 1=light, 2=dark
+    var dialerStylePref by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)) }
 
     // Keep theme in sync with Display Options without forcing an app restart.
     DisposableEffect(prefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == AppPreferences.KEY_CHOOSE_THEME) {
                 themeChoice = prefs.getInt(AppPreferences.KEY_CHOOSE_THEME, 0)
+            }
+            if (key == AppPreferences.KEY_DIALER_STYLE) {
+                dialerStylePref = prefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -222,12 +256,41 @@ fun DialerTheme(content: @Composable () -> Unit) {
     }
 
     val colorScheme = if (isDark) BBClassicDarkColorScheme else BBClassicLightColorScheme
-    val tokens = if (isDark) BBDarkTokens else BBLightTokens
+    val baseTokens = if (isDark) BBDarkTokens else BBLightTokens
+    val dialerStyle = if (dialerStylePref == AppPreferences.DIALER_STYLE_ORIGINAL_CLASSIC) {
+        DialerStyle.ORIGINAL_CLASSIC
+    } else {
+        DialerStyle.MODERN_CLASSIC
+    }
+    val tokens = when (dialerStyle) {
+        DialerStyle.ORIGINAL_CLASSIC -> baseTokens
+        DialerStyle.MODERN_CLASSIC -> baseTokens.copy(
+            bgPage = if (isDark) Color(0xFF000000) else Color(0xFF050608),
+            bgSurface = if (isDark) Color(0xFF0A0C10) else Color(0xFF0E1115),
+            bgElevated = if (isDark) Color(0xFF121720) else Color(0xFF181E28),
+            border = if (isDark) Color(0xFF293242) else Color(0xFF323D50),
+            textPrimary = Color(0xFFF4F8FF),
+            textSecondary = Color(0xFF9FB0C8),
+            textHint = Color(0xFF67758A),
+            accent = if (isDark) Color(0xFF8DB4FF) else Color(0xFF7AA7FF),
+            accentMuted = if (isDark) Color(0xFF5D83CC) else Color(0xFF638ED9),
+            surfaceActive = if (isDark) Color(0xFF15253D) else Color(0xFF182A45)
+        )
+    }
+    val motion = when (dialerStyle) {
+        DialerStyle.ORIGINAL_CLASSIC -> DialerMotionTokens(70, 150)
+        DialerStyle.MODERN_CLASSIC -> DialerMotionTokens(60, 100)
+    }
+    val typography = if (dialerStyle == DialerStyle.MODERN_CLASSIC) AppTypographyModernClassic else AppTypography
 
-    CompositionLocalProvider(LocalDialerColors provides tokens) {
+    CompositionLocalProvider(
+        LocalDialerColors provides tokens,
+        LocalDialerMotion provides motion,
+        LocalDialerStyle provides dialerStyle
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = AppTypography,
+            typography = typography,
             content = content
         )
     }

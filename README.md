@@ -21,7 +21,7 @@ Native Android dialer focused on **square, keyboard-first phones**—especially 
 [![Downloads](https://img.shields.io/github/downloads/faisal-ops/zeno-classic-dialer/total?style=flat-square&label=downloads)](https://github.com/faisal-ops/zeno-classic-dialer/releases)
 [![Latest release](https://img.shields.io/github/v/release/faisal-ops/zeno-classic-dialer?sort=semver&style=flat-square&label=release)](https://github.com/faisal-ops/zeno-classic-dialer/releases/latest)
 
-**Install:** open **[Latest release](https://github.com/faisal-ops/zeno-classic-dialer/releases/latest)** and download the attached APK (e.g. `zeno-classic-dialer-1.0.0-release.apk` for **v1.0.0**).  
+**Install:** open **[Latest release](https://github.com/faisal-ops/zeno-classic-dialer/releases/latest)** and download the attached APK (e.g. `zeno-classic-dialer-1.1.0-release.apk` for **v1.1.0**).  
 All releases: [github.com/faisal-ops/zeno-classic-dialer/releases](https://github.com/faisal-ops/zeno-classic-dialer/releases).
 
 ---
@@ -46,7 +46,7 @@ All releases: [github.com/faisal-ops/zeno-classic-dialer/releases](https://githu
 | **Language** | Kotlin |
 | **UI** | Jetpack Compose + Material 3 |
 | **`applicationId`** | `com.zeno.zenoclassicdialer` (release). Debug builds use the `.debug` suffix. |
-| **Version** | **1.0.0** (`versionCode` **12**); debug APK shows `1.0.0-debug` via `versionNameSuffix` |
+| **Version** | **1.1.0** (`versionCode` **13**); debug APK shows `1.1.0-debug` via `versionNameSuffix` |
 | **Min SDK** | **29** (Android 10) — default dialer / Telecom stack |
 | **Target SDK** | 34 |
 | **Theme** | Fixed **light** palette; system dark mode does not switch the UI (see Settings → About) |

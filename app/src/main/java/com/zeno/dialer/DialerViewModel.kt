@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 @androidx.compose.runtime.Immutable
 data class DialerUiState(
@@ -85,6 +86,9 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _callEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val callEvent: SharedFlow<String> = _callEvent.asSharedFlow()
+
+    private val _contactsScrollToTopEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val contactsScrollToTopEvent: SharedFlow<Unit> = _contactsScrollToTopEvent.asSharedFlow()
 
     private val _toggleExpandEvent = MutableSharedFlow<Int>(extraBufferCapacity = 1)
     val toggleExpandEvent: SharedFlow<Int> = _toggleExpandEvent.asSharedFlow()
@@ -224,27 +228,119 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     // ── Selection ────────────────────────────────────────────────────────────
 
+    /**
+     * Contacts tab list order matches [ContactsContent]: non-recent rows only; when the query
+     * is blank, sorted by [Contact.name] case-insensitive — not raw [DialerUiState.results] order.
+     * Returns result indices in that visual order, or null when not on Contacts.
+     */
+    private fun buildContactsNavResultIndices(state: DialerUiState): List<Int>? {
+        if (state.currentTabIndex != 1 || state.filterMode != FilterMode.CONTACTS) return null
+        val filtered = state.results.filter { !it.isRecent }
+        if (filtered.isEmpty()) return emptyList()
+        val ordered = if (state.query.isNotBlank()) {
+            filtered
+        } else {
+            filtered.sortedWith(
+                compareBy<Contact> { it.name.lowercase(Locale.ROOT) }
+                    .thenBy { it.id }
+                    .thenBy { it.number }
+            )
+        }
+        return ordered.map { c -> resultIndexForContact(state, c) }
+    }
+
+    private fun resultIndexForContact(state: DialerUiState, target: Contact): Int {
+        val exact = state.results.indexOfFirst {
+            !it.isRecent && it.id == target.id && it.number == target.number
+        }
+        if (exact >= 0) return exact
+        return state.results.indexOfFirst { !it.isRecent && it.number == target.number }
+    }
+
+    private fun effectiveSelectionIndex(state: DialerUiState): Int? = when {
+        state.selectedIndex >= 0 -> state.selectedIndex
+        state.scrollFocusedIndex >= 0 -> state.scrollFocusedIndex
+        else -> null
+    }
+
+    /** True when selection is on the first row in Contacts visual order (not necessarily results[0]). */
+    fun isContactsNavAtStart(state: DialerUiState): Boolean {
+        val nav = buildContactsNavResultIndices(state) ?: return false
+        if (nav.isEmpty()) return false
+        val cur = effectiveSelectionIndex(state) ?: return false
+        return cur == nav[0]
+    }
+
     fun nudgeSelectionUp() {
         _uiState.update { state ->
-            if (state.results.isEmpty() || state.selectedIndex < 0) return@update state
-            state.copy(selectedIndex = (state.selectedIndex - 1).coerceAtLeast(0))
+            if (state.results.isEmpty()) return@update state
+            val nav = buildContactsNavResultIndices(state)
+            if (nav != null && nav.isNotEmpty()) {
+                val cur = effectiveSelectionIndex(state) ?: return@update state
+                var navPos = nav.indexOfFirst { it == cur }
+                if (navPos < 0) {
+                    val c = state.results.getOrNull(cur) ?: return@update state
+                    navPos = nav.indexOfFirst { ri ->
+                        val rc = state.results.getOrNull(ri)
+                        rc != null && rc.id == c.id && rc.number == c.number
+                    }
+                }
+                if (navPos < 0) return@update state
+                val newIdx = if (navPos <= 0) nav[0] else nav[navPos - 1]
+                return@update state.copy(selectedIndex = newIdx, scrollFocusedIndex = newIdx)
+            }
+            val base = effectiveSelectionIndex(state) ?: return@update state
+            val next = (base - 1).coerceAtLeast(0)
+            state.copy(selectedIndex = next, scrollFocusedIndex = next)
         }
     }
 
     fun nudgeSelectionDown() {
         _uiState.update { state ->
             val max = (state.results.size - 1).coerceAtLeast(0)
-            if (state.results.isEmpty()) return@update state.copy(selectedIndex = -1)
+            if (state.results.isEmpty()) {
+                return@update state.copy(selectedIndex = -1, scrollFocusedIndex = -1)
+            }
+            val nav = buildContactsNavResultIndices(state)
+            if (nav != null && nav.isNotEmpty()) {
+                val cur = effectiveSelectionIndex(state)
+                if (cur == null) {
+                    val first = nav[0]
+                    return@update state.copy(selectedIndex = first, scrollFocusedIndex = first)
+                }
+                var navPos = nav.indexOfFirst { it == cur }
+                if (navPos < 0) {
+                    val c = state.results.getOrNull(cur) ?: return@update state
+                    navPos = nav.indexOfFirst { ri ->
+                        val rc = state.results.getOrNull(ri)
+                        rc != null && rc.id == c.id && rc.number == c.number
+                    }
+                }
+                if (navPos < 0) return@update state
+                val newIdx = if (navPos >= nav.lastIndex) nav[nav.lastIndex] else nav[navPos + 1]
+                return@update state.copy(selectedIndex = newIdx, scrollFocusedIndex = newIdx)
+            }
+            val base = effectiveSelectionIndex(state) ?: -1
             val next = when {
-                state.selectedIndex < 0 -> 0
-                else -> state.selectedIndex + 1
+                base < 0 -> 0
+                else -> base + 1
             }.coerceAtMost(max)
-            state.copy(selectedIndex = next)
+            state.copy(selectedIndex = next, scrollFocusedIndex = next)
         }
     }
 
     fun selectItem(index: Int) {
         _uiState.update { it.copy(selectedIndex = index, scrollFocusedIndex = index) }
+    }
+
+    /** Selects the first contact in Contacts *visual* order and scrolls the list to the top. */
+    fun scrollContactsToTop() {
+        _uiState.update { state ->
+            val nav = buildContactsNavResultIndices(state)
+            val idx = nav?.firstOrNull()?.takeIf { it >= 0 } ?: 0
+            state.copy(selectedIndex = idx, scrollFocusedIndex = idx)
+        }
+        _contactsScrollToTopEvent.tryEmit(Unit)
     }
 
     fun setFavoriteFocus(index: Int) {
@@ -480,5 +576,17 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     private fun emitCall(number: String) {
         lastDialEventMs = SystemClock.elapsedRealtime()
         viewModelScope.launch { _callEvent.emit(number) }
+    }
+
+    /**
+     * Clears list focus and the post-dial selection retention window ([lastDialEventMs] /
+     * [forceRefresh] keepSelection) so the hardware Call key does not redial the previous
+     * row after a call ends.
+     */
+    fun resetCallKeyTargetState() {
+        lastDialEventMs = 0L
+        _uiState.update {
+            it.copy(selectedIndex = -1, scrollFocusedIndex = -1)
+        }
     }
 }

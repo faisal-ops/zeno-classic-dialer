@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -94,6 +95,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import androidx.compose.runtime.CompositionLocalProvider
 import com.zeno.dialer.ui.AccentGreen
 import com.zeno.dialer.data.Contact
 import com.zeno.dialer.data.RecentsRepo
@@ -139,6 +141,22 @@ private fun buildRows(results: List<Contact>): List<ListRow> {
         rows.add(ListRow.Item(c, i))
     }
     return rows
+}
+
+/** Maps LazyColumn item index → Calls/results row index (headers advance index only). */
+private fun buildLazyIndexToResultIndex(rows: List<ListRow>): Map<Int, Int> {
+    val map = HashMap<Int, Int>(rows.size)
+    var lazyIdx = 0
+    for (row in rows) {
+        when (row) {
+            is ListRow.DateHeader, is ListRow.SectionLabel -> lazyIdx += 1
+            is ListRow.Item -> {
+                map[lazyIdx] = row.idx
+                lazyIdx += 1
+            }
+        }
+    }
+    return map
 }
 
 // ── ResultsList ──────────────────────────────────────────────────────────────
@@ -227,7 +245,8 @@ fun ResultsList(
     // D-pad key press, which would re-trigger the scroll-stop handler spuriously.
     // rememberUpdatedState ensures the collect closure always sees the latest values without
     // restarting the coroutine.
-    val currentRows by rememberUpdatedState(rows)
+    val lazyIndexToResultIndex = remember(rows) { buildLazyIndexToResultIndex(rows) }
+    val currentLazyIndexToResultIndex by rememberUpdatedState(lazyIndexToResultIndex)
     val currentResults by rememberUpdatedState(results)
     val currentOnScrollFocusIndexChanged by rememberUpdatedState(onScrollFocusIndexChanged)
     LaunchedEffect(listState) {
@@ -249,18 +268,9 @@ fun ResultsList(
                 if (!hadUserDrag) return@collect
                 hadUserDrag = false
                 if (currentResults.isEmpty()) return@collect
-                // Build a one-shot map from lazy-list position → result index for this emission.
-                val lazyToResultIdx = HashMap<Int, Int>()
-                var lazyIdx = 0
-                for (row in currentRows) {
-                    when (row) {
-                        is ListRow.DateHeader, is ListRow.SectionLabel -> lazyIdx += 1
-                        is ListRow.Item -> { lazyToResultIdx[lazyIdx] = row.idx; lazyIdx += 1 }
-                    }
-                }
                 val anchor = listState.firstVisibleItemIndex + 1
                 for (li in anchor..(anchor + 10)) {
-                    val candidate = lazyToResultIdx[li] ?: continue
+                    val candidate = currentLazyIndexToResultIndex[li] ?: continue
                     if (candidate in currentResults.indices) {
                         currentOnScrollFocusIndexChanged(candidate)
                     }
@@ -304,47 +314,45 @@ fun ResultsList(
     // No nestedScroll dampening: BB Classic Q20 / Zinwa Q25 trackpads send small deltas;
     // the old "slow wheel" hack made lists feel stuck and fighting the user.
 
-    LazyColumn(state = listState, modifier = modifier.fillMaxSize()) {
-        rows.forEach { row ->
-            when (row) {
-
-                is ListRow.DateHeader -> item(
-                    key = "dh_${row.label}",
-                    contentType = "header"
-                ) {
-                    DateHeaderRow(label = row.label)
+    CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
+        LazyColumn(state = listState, modifier = modifier.fillMaxSize()) {
+            items(
+                items = rows,
+                key = { row ->
+                    when (row) {
+                        is ListRow.DateHeader -> "dh_${row.label}"
+                        is ListRow.SectionLabel -> "sl_${row.title}"
+                        is ListRow.Item -> "it_${row.contact.id}_${row.contact.number}_${row.idx}"
+                    }
+                },
+                contentType = { row ->
+                    when (row) {
+                        is ListRow.DateHeader -> 0
+                        is ListRow.SectionLabel -> 1
+                        is ListRow.Item -> 2
+                    }
                 }
-
-                is ListRow.SectionLabel -> item(
-                    key = "sl_${row.title}",
-                    contentType = "header"
-                ) {
-                    SectionLabelRow(title = row.title)
-                }
-
-                is ListRow.Item -> {
-                    val c   = row.contact
-                    val idx = row.idx
-                    item(
-                        key = "${c.id}_${c.number}",
-                        contentType = "contact"
-                    ) {
+            ) { row ->
+                when (row) {
+                    is ListRow.DateHeader -> DateHeaderRow(label = row.label)
+                    is ListRow.SectionLabel -> SectionLabelRow(title = row.title)
+                    is ListRow.Item -> {
+                        val c = row.contact
+                        val idx = row.idx
                         Column(
                             modifier = Modifier.bringIntoViewRequester(rowBringers[idx])
                         ) {
                             ContactRow(
-                                contact  = c,
+                                contact = c,
                                 selected = selectedIndex >= 0 && idx == selectedIndex,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .combinedClickable(
-                                        onClick       = { onTap(idx) },
+                                        onClick = { onTap(idx) },
                                         onDoubleClick = { onDoubleTap(idx) },
-                                        onLongClick   = { actionTarget = c to idx }
+                                        onLongClick = { actionTarget = c to idx }
                                     ),
                             )
-
-                            // Show inline last-2-3 call history below the expanded row (tap-only).
                             if (expandedIndex == idx && expandedHistory.isNotEmpty()) {
                                 Column(
                                     modifier = Modifier
@@ -815,14 +823,34 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 
 @Composable
 private fun DateHeaderRow(label: String) {
-    Text(
-        text     = label,
-        color    = TextPrimary,
-        style    = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Normal, fontSize = 14.sp),
+    val isModern = IsModernClassic
+    Box(
         modifier = Modifier
+            .fillMaxWidth()
+            .then(if (isModern) Modifier.background(BgSurface) else Modifier)
             .padding(horizontal = 10.dp)
             .padding(top = 7.dp, bottom = 4.dp)
-    )
+    ) {
+        if (isModern) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(3.dp)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Accent.copy(alpha = 0.55f))
+            )
+        }
+        Text(
+            text  = label,
+            color = if (isModern) TextSecondary else TextPrimary,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = if (isModern) FontWeight.Medium else FontWeight.Normal,
+                fontSize   = if (isModern) 12.sp else 14.sp
+            ),
+            modifier = Modifier.padding(start = if (isModern) 10.dp else 0.dp)
+        )
+    }
 }
 
 @Composable
@@ -847,7 +875,9 @@ private fun ContactRow(
 ) {
     val rowBg = if (selected) SurfaceActive else Color.Transparent
     val isMissed = contact.isRecent && contact.callType == CallLog.Calls.MISSED_TYPE
-    val nameColor = if (isMissed) Color(0xFFC0392B) else TextPrimary
+    val isModernRow = IsModernClassic
+    val missedColor = if (isModernRow) Danger else Color(0xFFC0392B)
+    val nameColor = if (isMissed) missedColor else TextPrimary
     val secondaryColor = TextSecondary
 
     Row(
@@ -866,7 +896,7 @@ private fun ContactRow(
                 modifier = Modifier
                     .width(3.dp)
                     .fillMaxSize()
-                    .background(Color(0xFFC0392B))
+                    .background(missedColor)
             )
         }
         Row(
@@ -915,7 +945,7 @@ private fun ContactRow(
                 ) {
                     Text(
                         text = contact.lastCallTime.toTimeAgo(),
-                        color = TextSecondary,
+                        color = if (isModernRow) TextHint else TextSecondary,
                         fontSize = 13.sp,
                         lineHeight = 14.sp,
                         maxLines = 1
@@ -1074,8 +1104,8 @@ internal fun ContactAvatar(name: String, photoUri: String?, size: Int) {
                     .data(photoUri)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(150)
-                    .size(size * 3)
+                    .crossfade(false)
+                    .size(size * 2)
                     .build()
             }
             AsyncImage(

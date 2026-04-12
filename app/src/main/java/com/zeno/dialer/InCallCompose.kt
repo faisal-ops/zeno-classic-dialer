@@ -82,6 +82,7 @@ import com.zeno.dialer.ui.AccentMuted
 import com.zeno.dialer.ui.BgElevated
 import com.zeno.dialer.ui.BgSurface
 import com.zeno.dialer.ui.Border
+import com.zeno.dialer.ui.IsModernClassic
 import com.zeno.dialer.ui.TextHint
 import com.zeno.dialer.ui.TextPrimary
 import com.zeno.dialer.ui.TextSecondary
@@ -182,9 +183,9 @@ private fun InCallHeaderSection(
                     Text(
                         text = displayName,
                         color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Normal,
-                        lineHeight = 25.sp,
+                        fontSize = if (IsModernClassic) 30.sp else 22.sp,
+                        fontWeight = if (IsModernClassic) FontWeight.SemiBold else FontWeight.Normal,
+                        lineHeight = if (IsModernClassic) 33.sp else 25.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -207,8 +208,8 @@ private fun InCallHeaderSection(
                 Text(
                     text = timerOrState,
                     color = Color.White,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Light,
+                    fontSize = if (IsModernClassic) 20.sp else 17.sp,
+                    fontWeight = if (IsModernClassic) FontWeight.Medium else FontWeight.Light,
                     letterSpacing = 1.sp,
                     fontFamily = if (state == Call.STATE_ACTIVE) FontFamily.Monospace else FontFamily.Default,
                     modifier = Modifier.padding(bottom = 2.dp)
@@ -336,7 +337,7 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF2C2C2C))
+            .background(if (IsModernClassic) Color.Black else Color(0xFF2C2C2C))
     ) {
         // Header uses upper portion; white control panel expands into the rest (no grey spacer band).
         Box(
@@ -599,6 +600,7 @@ private fun InCallControlsPanel(
     modifier: Modifier = Modifier,
     expandRows: Boolean = false,
 ) {
+    val isMC = IsModernClassic
     val controlIconDp = 19.dp * 1.1f
     val controlLabelSp = (10f * 1.1f).sp
     val controlLineSp = (11f * 1.1f).sp
@@ -607,7 +609,8 @@ private fun InCallControlsPanel(
         modifier = modifier
             .fillMaxWidth()
             .then(if (expandRows) Modifier.fillMaxHeight() else Modifier)
-            .background(Color.White)
+            .background(if (isMC) BgSurface else Color.White)
+            .then(if (isMC) Modifier.padding(horizontal = 8.dp, vertical = 6.dp) else Modifier)
     ) {
         ControlRow(
             height = controlRowHeight,
@@ -620,7 +623,8 @@ private fun InCallControlsPanel(
             middle = ControlCellDef(if (micMuted) Icons.Default.MicOff else Icons.Default.Mic, "Mute", micMuted, onToggleMute),
             right = ControlCellDef(Icons.Default.Dialpad, "Dial Pad", false, onKeypad),
         )
-        HorizontalDivider(color = Border, thickness = 1.dp)
+        if (isMC) Spacer(Modifier.height(6.dp))
+        else HorizontalDivider(color = Border, thickness = 1.dp)
         ControlRow(
             height = controlRowHeight,
             iconSize = controlIconDp,
@@ -701,54 +705,137 @@ private fun ControlCell(
     labelLineHeight: TextUnit = 11.sp,
     iconLabelGap: Dp = 4.dp,
 ) {
+    val isMC = IsModernClassic
     val tint = when {
         !def.enabled -> TextHint
-        def.active -> Accent
-        else -> TextSecondary
+        def.active   -> Accent
+        else         -> if (isMC) TextPrimary else TextSecondary
     }
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .clickable(enabled = def.enabled) { def.onClick() }
-            .padding(vertical = 4.dp, horizontal = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(imageVector = def.icon, contentDescription = def.label, tint = tint, modifier = Modifier.size(iconSize))
-        Spacer(Modifier.height(iconLabelGap))
-        Text(
-            text = def.label,
-            color = tint,
-            fontSize = labelFontSize,
-            fontWeight = FontWeight.Medium,
-            maxLines = 2,
-            lineHeight = labelLineHeight,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
+    val cardBg = when {
+        def.active -> Accent.copy(alpha = 0.15f)
+        else       -> BgElevated
+    }
+    if (isMC) {
+        // Modern Classic: each control is an individual dark rounded card
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(3.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(cardBg)
+                .clickable(enabled = def.enabled) { def.onClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = def.icon,
+                    contentDescription = def.label,
+                    tint = tint,
+                    modifier = Modifier.size(iconSize * 1.1f)
+                )
+                Spacer(Modifier.height(iconLabelGap))
+                Text(
+                    text       = def.label,
+                    color      = tint,
+                    fontSize   = labelFontSize,
+                    fontWeight = FontWeight.Medium,
+                    maxLines   = 2,
+                    lineHeight = labelLineHeight,
+                    overflow   = TextOverflow.Ellipsis,
+                    textAlign  = TextAlign.Center
+                )
+            }
+        }
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .clickable(enabled = def.enabled) { def.onClick() }
+                .padding(vertical = 4.dp, horizontal = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(imageVector = def.icon, contentDescription = def.label, tint = tint, modifier = Modifier.size(iconSize))
+            Spacer(Modifier.height(iconLabelGap))
+            Text(
+                text       = def.label,
+                color      = tint,
+                fontSize   = labelFontSize,
+                fontWeight = FontWeight.Medium,
+                maxLines   = 2,
+                lineHeight = labelLineHeight,
+                overflow   = TextOverflow.Ellipsis,
+                textAlign  = TextAlign.Center
+            )
+        }
     }
 }
 
 @Composable
 private fun EndCallBar(onEnd: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Color(0xFFC0392B))
-            .semantics { contentDescription = "End call" }
-            .clickable { onEnd() }
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.CallEnd,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(text = "End", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    val isMC = IsModernClassic
+    if (isMC) {
+        // Modern Classic: floating rounded pill on dark background
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(BgSurface)
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+                .semantics { contentDescription = "End call" },
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFFD9534F), Color(0xFFA93226))
+                        )
+                    )
+                    .clickable { onEnd() }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CallEnd,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = "End",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    } else {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(Color(0xFFC0392B))
+                .semantics { contentDescription = "End call" }
+                .clickable { onEnd() }
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.CallEnd,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(text = "End", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 

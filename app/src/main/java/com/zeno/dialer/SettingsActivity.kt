@@ -230,17 +230,6 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
                 SettingsNavItem(icon = Icons.Default.Phone, title = "Flip To Silence",
                     onClick = { onNavigate(SettingsPage.FLIP_TO_SILENCE) })
             }
-            item {
-                val prefs = context.getSharedPreferences(AppPreferences.FILE_SETTINGS, Context.MODE_PRIVATE)
-                var endCallAnywhere by remember { mutableStateOf(prefs.getBoolean(AppPreferences.KEY_END_CALL_ANYWHERE, false)) }
-                ToggleRow(
-                    title = "End call from any app",
-                    subtitle = "Hardware end button hangs up even outside the dialer",
-                    checked = endCallAnywhere,
-                    showDividerBelow = false,
-                    onToggle = { endCallAnywhere = it; prefs.edit().putBoolean(AppPreferences.KEY_END_CALL_ANYWHERE, it).apply() }
-                )
-            }
 
             // About
             item { SectionHeader("About") }
@@ -381,11 +370,11 @@ private fun QuickResponsesScreen(onBack: () -> Unit) {
 private fun DisplayOptionsScreen(onBack: () -> Unit) {
     val prefs = rememberPrefs()
     var portraitMode by remember { mutableStateOf(prefs.getBoolean(AppPreferences.KEY_PORTRAIT_MODE, true)) }
-    var themeChoice by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_CHOOSE_THEME, 0)) }
+    var themeChoice by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)) }
     var sortBy by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_SORT_BY, 0)) }
     var nameFormat by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_NAME_FORMAT, 0)) }
 
-    val themes = listOf("System default", "Light", "Dark")
+    val themes = listOf("Original Classic", "Modern Classic")
     val sortOptions = listOf("First name", "Last name")
     val nameOptions = listOf("First name first", "Last name first")
 
@@ -401,7 +390,10 @@ private fun DisplayOptionsScreen(onBack: () -> Unit) {
             selectedIndex = themeChoice.coerceIn(0, themes.lastIndex),
             onSelect = {
                 themeChoice = it
-                prefs.edit().putInt(AppPreferences.KEY_CHOOSE_THEME, it).apply()
+                prefs.edit()
+                    .putInt(AppPreferences.KEY_DIALER_STYLE, it)
+                    .putInt(AppPreferences.KEY_CHOOSE_THEME, it)
+                    .apply()
             }
         )
 

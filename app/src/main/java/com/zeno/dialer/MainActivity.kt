@@ -26,6 +26,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.telecom.Call
 import android.telecom.TelecomManager
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
@@ -37,7 +38,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import com.zeno.dialer.data.Contact
 import com.zeno.dialer.ui.DialerScreen
 import com.zeno.dialer.ui.DialerTab
@@ -53,6 +58,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var keyHandler: KeyHandler
     private val showAccessibilityPrompt = mutableStateOf(false)
     private val requestedTab = mutableStateOf<DialerTab?>(null)
+    private val isDefaultDialer = mutableStateOf(false)
     // True while the system role-picker is on screen — prevents re-launching on the
     // onResume that fires right after the picker is dismissed.
     private var roleRequestInFlight = false
@@ -75,13 +81,7 @@ class MainActivity : ComponentActivity() {
         roleRequestInFlight = false
         val roleManager = getSystemService(RoleManager::class.java)
         if (roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
-            // Role granted — if this is the first setup, close the app
-            val prefs = getSharedPreferences(AppPreferences.FILE_ZENO, MODE_PRIVATE)
-            if (!prefs.getBoolean(AppPreferences.KEY_SETUP_COMPLETE, false)) {
-                prefs.edit().putBoolean(AppPreferences.KEY_SETUP_COMPLETE, true).apply()
-                finish()
-                return@registerForActivityResult
-            }
+            isDefaultDialer.value = true
         } else {
             // User declined — don't spam the picker again this session
             roleDeclinedThisSession = true
@@ -95,6 +95,9 @@ class MainActivity : ComponentActivity() {
         window.statusBarColor = 0xFF1278C8.toInt()
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
 
+        isDefaultDialer.value = getSystemService(RoleManager::class.java)
+            .isRoleHeld(RoleManager.ROLE_DIALER)
+
         keyHandler = KeyHandler(
             viewModel = viewModel,
             onFinish = { finish() },
@@ -106,6 +109,19 @@ class MainActivity : ComponentActivity() {
 
         requestRequiredPermissions()
         observeCallEvents()
+        observeCallEndToResetCallKeyTargets()
+        val fromToolbarCallKeyOpen =
+            intent?.getBooleanExtra(
+                com.zeno.dialer.service.ButtonInterceptService.EXTRA_CALL_BUTTON_PRESSED,
+                false
+            ) == true
+        if (fromToolbarCallKeyOpen) {
+            // Same as onNewIntent: cold start after Main was finished must not leave stale
+            // row focus / lastDial retention from a previous session.
+            intent?.removeExtra(com.zeno.dialer.service.ButtonInterceptService.EXTRA_CALL_BUTTON_PRESSED)
+            viewModel.resetCallKeyTargetState()
+            viewModel.setCurrentTab(0)
+        }
         routeDialerIntents(intent)
         if (intent?.getBooleanExtra("open_keypad", false) == true) {
             requestedTab.value = DialerTab.KEYPAD
@@ -114,13 +130,23 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             DialerTheme {
-                DialerScreen(
-                    viewModel = viewModel,
-                    requestedTab = requestedTab.value,
-                    onOpenContact = { contact -> openContactInContactsApp(contact) },
-                )
+                androidx.compose.foundation.layout.Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    if (!BuildConfig.DEBUG) {
+                        DefaultDialerOverlay()
+                    }
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        DialerScreen(
+                            viewModel = viewModel,
+                            requestedTab = requestedTab.value,
+                            onOpenContact = { contact -> openContactInContactsApp(contact) },
+                        )
+                    }
+                }
                 if (!BuildConfig.DEBUG) {
-                    DefaultDialerOverlay()
                     AccessibilityPromptDialog()
                 }
             }
@@ -144,6 +170,10 @@ class MainActivity : ComponentActivity() {
 
         // Debug preview mode: skip default-dialer and accessibility prompting.
         if (BuildConfig.DEBUG) return
+
+        // Sync the observable role state so the banner reacts immediately.
+        isDefaultDialer.value = getSystemService(RoleManager::class.java)
+            .isRoleHeld(RoleManager.ROLE_DIALER)
 
         val prefs = getSharedPreferences(AppPreferences.FILE_ZENO, MODE_PRIVATE)
 
@@ -203,6 +233,7 @@ class MainActivity : ComponentActivity() {
             intent.removeExtra(com.zeno.dialer.service.ButtonInterceptService.EXTRA_CALL_BUTTON_PRESSED)
             // Background open via hardware Call key should only foreground the dialer.
             // Do not auto-dial based on any stale selection/focus.
+            viewModel.resetCallKeyTargetState()
             viewModel.setCurrentTab(0)
             return
         }
@@ -219,6 +250,8 @@ class MainActivity : ComponentActivity() {
             Intent.ACTION_CALL -> {
                 val number = intent.data?.schemeSpecificPart?.trim().orEmpty()
                 if (number.isNotBlank()) placeCall(number)
+                // singleTop keeps the launch Intent; a later REORDER_TO_FRONT must not re-run CALL.
+                neutralizeStickyDialIntent()
             }
             Intent.ACTION_DIAL -> {
                 val number = intent.data?.schemeSpecificPart?.trim().orEmpty()
@@ -228,6 +261,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     dialOrOpenKeypad()
                 }
+                neutralizeStickyDialIntent()
             }
             Intent.ACTION_VIEW -> {
                 val data = intent.data ?: return
@@ -237,13 +271,24 @@ class MainActivity : ComponentActivity() {
                         if (number.isNotBlank()) {
                             viewModel.setCurrentTab(0)
                             viewModel.setQueryDirect(number)
+                            neutralizeStickyDialIntent()
                         }
                     }
                     "content" -> openFromCallLogUri(data)
                     else -> { }
                 }
             }
+            else -> { }
         }
+    }
+
+    /** Replace a consumed dial deep-link so it cannot fire again on the same activity instance. */
+    private fun neutralizeStickyDialIntent() {
+        setIntent(
+            Intent(this, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+            }
+        )
     }
 
     /** Missed-call / call-history notification taps (content://call_log/…). */
@@ -291,8 +336,8 @@ class MainActivity : ComponentActivity() {
                 state.selectedIndex < state.results.size -> viewModel.callSelected()
             state.scrollFocusedIndex >= 0 &&
                 state.scrollFocusedIndex < state.results.size -> viewModel.callSelected()
-            state.results.isNotEmpty() &&
-                viewModel.currentTabIndex == 0 -> viewModel.callItem(0)
+            // Do not dial results[0] with no explicit focus — after End + Call, that
+            // wrongly redialed the top recent. Open Calls tab only (same as KEYCODE_CALL fallback).
             else -> viewModel.setCurrentTab(0)
         }
     }
@@ -303,6 +348,31 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             viewModel.callEvent.collect { number ->
                 placeCall(number)
+            }
+        }
+    }
+
+    /**
+     * After a call disconnects, clear row focus and the 3s post-dial selection retention in
+     * [DialerViewModel.forceRefresh]; otherwise the next toolbar/Call key redials that row.
+     */
+    private fun observeCallEndToResetCallKeyTargets() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                var hadActiveCall = false
+                CallStateHolder.info
+                    .map { info ->
+                        info != null &&
+                            info.state != Call.STATE_DISCONNECTED &&
+                            info.state != Call.STATE_DISCONNECTING
+                    }
+                    .distinctUntilChanged()
+                    .collect { active ->
+                        if (hadActiveCall && !active) {
+                            viewModel.resetCallKeyTargetState()
+                        }
+                        hadActiveCall = active
+                    }
             }
         }
     }
@@ -383,12 +453,9 @@ class MainActivity : ComponentActivity() {
             if (event.keyCode == KeyEvent.KEYCODE_CALL) {
                 Log.i("ZenoDialer", "dispatchKeyEvent KEYCODE_CALL")
             }
-            if (
-                (event.keyCode == KeyEvent.KEYCODE_DPAD_UP || event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) &&
-                event.repeatCount > 0
-            ) {
-                return true
-            }
+            // Key-repeat for DPAD_UP/DOWN is now intentionally allowed so holding the
+            // key scrolls continuously. The allowDpadNavStep() throttle in KeyHandler
+            // (80 ms) prevents runaway scrolling on fast auto-repeat.
 
             if (viewModel.isOnKeypad) {
                 val kcm = event.device?.keyCharacterMap
@@ -444,7 +511,7 @@ class MainActivity : ComponentActivity() {
 
     private fun launchRolePickerIfNeeded() {
         val roleManager = getSystemService(RoleManager::class.java)
-        if (!roleManager.isRoleHeld(RoleManager.ROLE_DIALER)
+        if (!isDefaultDialer.value
             && !roleRequestInFlight
             && !roleDeclinedThisSession
         ) {
@@ -523,89 +590,44 @@ class MainActivity : ComponentActivity() {
     }
 
     // ── Default dialer banner ────────────────────────────────────────────────
-    // Shown at the top of the screen when the role was declined this session.
-    // Tapping it relaunches the system picker.
+    // Shown at the top of the screen when ROLE_DIALER is not held.
+    // Non-blocking: the dialer is fully usable, but calls from the system
+    // Contacts app won't reach us until we are the default phone app.
 
     @Composable
     private fun DefaultDialerOverlay() {
-        val roleManager = getSystemService(RoleManager::class.java)
-        if (roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) return
+        if (isDefaultDialer.value) return
 
-        androidx.compose.foundation.layout.Box(
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .background(androidx.compose.material3.MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
-        ) {
-            androidx.compose.foundation.layout.Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 32.dp)
-            ) {
-                // Phone icon in circle
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .background(
-                            androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh,
-                            androidx.compose.foundation.shape.CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.material3.Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = null,
-                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-
-                androidx.compose.foundation.layout.Spacer(Modifier.size(24.dp))
-
-                androidx.compose.material3.Text(
-                    text = "Set Phone as default",
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                    style = androidx.compose.material3.MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
-
-                androidx.compose.material3.Text(
-                    text = "Phone can only start & receive calls if it's your default phone app",
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-
-                androidx.compose.foundation.layout.Spacer(Modifier.size(32.dp))
-
-                // "Set as default" button (inverse surface pill)
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .background(
-                            androidx.compose.material3.MaterialTheme.colorScheme.inverseSurface,
-                            androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
+                .fillMaxWidth()
+                .background(androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer)
+                .clickable {
+                    if (!roleRequestInFlight) {
+                        roleRequestInFlight = true
+                        roleDeclinedThisSession = false
+                        val rm = getSystemService(RoleManager::class.java)
+                        roleRequestLauncher.launch(
+                            rm.createRequestRoleIntent(RoleManager.ROLE_DIALER)
                         )
-                        .clickable {
-                            if (!roleRequestInFlight) {
-                                roleRequestInFlight = true
-                                roleDeclinedThisSession = false
-                                roleRequestLauncher.launch(
-                                    roleManager.createRequestRoleIntent(RoleManager.ROLE_DIALER)
-                                )
-                            }
-                        }
-                        .padding(horizontal = 28.dp, vertical = 14.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.material3.Text(
-                        text = "Set as default",
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.inverseOnSurface,
-                        style = androidx.compose.material3.MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    }
                 }
-            }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            androidx.compose.material3.Text(
+                text = "Tap to set as default phone app",
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f)
+            )
+            androidx.compose.material3.Icon(
+                imageVector = Icons.Default.Phone,
+                contentDescription = null,
+                tint = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 

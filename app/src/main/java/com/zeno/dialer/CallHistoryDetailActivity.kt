@@ -6,6 +6,8 @@ import android.os.Bundle
 import android.provider.CallLog
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -99,6 +102,7 @@ class CallHistoryDetailActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CallHistoryDetailScreen(
     number: String,
@@ -180,13 +184,14 @@ private fun CallHistoryDetailScreen(
                 Text("No history", color = TextSecondary)
             }
         } else {
+            CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
             ) {
                 grouped.forEach { (dateLabel, entries) ->
                     // Date header
-                    item(key = "hdr_$dateLabel") {
+                    item(key = "hdr_$dateLabel", contentType = 0) {
                         Text(
                             text = dateLabel,
                             color = TextSecondary,
@@ -197,7 +202,11 @@ private fun CallHistoryDetailScreen(
                     }
 
                     // Call entries as cards
-                    items(entries, key = { "${it.lastCallTime}_${it.callType}" }) { item ->
+                    items(
+                        items = entries,
+                        key = { "${it.lastCallTime}_${it.callType}_${it.number}" },
+                        contentType = { 1 }
+                    ) { item ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -227,6 +236,7 @@ private fun CallHistoryDetailScreen(
                         }
                     }
                 }
+            }
             }
         }
 
