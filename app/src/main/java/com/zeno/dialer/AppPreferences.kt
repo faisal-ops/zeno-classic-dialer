@@ -25,8 +25,9 @@ object AppPreferences {
     const val KEY_CALLER_SPAM_ID = "see_caller_spam_id"
     const val KEY_FILTER_SPAM = "filter_spam_calls"
     const val KEY_END_CALL_ANYWHERE = "end_call_from_any_app"
-    /** Dialer style: 0=Original Classic (v1.0.0), 1=Modern Classic. */
+    /** Dialer style: 0=Original Classic (v1.0.0), 1=Modern Classic, 2=Pixel. */
     const val KEY_DIALER_STYLE = "dialer_style"
     const val DIALER_STYLE_ORIGINAL_CLASSIC = 0
     const val DIALER_STYLE_MODERN_CLASSIC = 1
+    const val DIALER_STYLE_PIXEL = 2
 }

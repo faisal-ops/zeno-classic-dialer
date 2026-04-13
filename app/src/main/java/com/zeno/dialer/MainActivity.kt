@@ -28,8 +28,10 @@ import android.provider.CallLog
 import android.provider.ContactsContract
 import android.telecom.Call
 import android.telecom.TelecomManager
+import android.view.InputDevice
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -91,9 +93,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // BB Classic: blue status bar with light icons.
-        window.statusBarColor = 0xFF1278C8.toInt()
-        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
+        updateStatusBarForTheme()
 
         isDefaultDialer.value = getSystemService(RoleManager::class.java)
             .isRoleHeld(RoleManager.ROLE_DIALER)
@@ -153,6 +153,34 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun updateStatusBarForTheme() {
+        val prefs  = getSharedPreferences(AppPreferences.FILE_SETTINGS, MODE_PRIVATE)
+        val style  = prefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)
+        val nightModeFlags = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        val systemDark = nightModeFlags == android.content.res.Configuration.UI_MODE_NIGHT_YES
+
+        // Mirror Theme.kt brightness rules exactly:
+        //   OC → always light, MC → always dark, Pixel → always follows system
+        val isDark = when (style) {
+            AppPreferences.DIALER_STYLE_ORIGINAL_CLASSIC -> false
+            AppPreferences.DIALER_STYLE_MODERN_CLASSIC   -> true
+            else /* PIXEL */                             -> systemDark
+        }
+
+        val statusColor = when (style) {
+            AppPreferences.DIALER_STYLE_PIXEL              -> if (isDark) 0xFF111318.toInt() else 0xFFF8F9FC.toInt()
+            AppPreferences.DIALER_STYLE_MODERN_CLASSIC     -> 0xFF000000.toInt()
+            else                                           -> 0xFF1278C8.toInt() // OC — BB blue
+        }
+        val lightIcons = when (style) {
+            AppPreferences.DIALER_STYLE_PIXEL          -> !isDark  // light bg → dark icons
+            AppPreferences.DIALER_STYLE_MODERN_CLASSIC -> false    // always dark bg → white icons
+            else                                       -> false    // OC blue bg → white icons
+        }
+        window.statusBarColor = statusColor
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = lightIcons
+    }
+
     // Clear callbacks when Activity goes to background so that
     // ButtonInterceptService falls back to openDefaultDialer() which
     // properly brings the Activity to the foreground via an Intent.
@@ -166,6 +194,12 @@ class MainActivity : ComponentActivity() {
     // This restores them after onStop cleared them.
     override fun onResume() {
         super.onResume()
+        updateStatusBarForTheme()
+        // Apply theme-appropriate default tab (Pixel→Home, Classic→Calls).
+        // Only takes effect when the style changes or on first ever call.
+        val settingsPrefs = getSharedPreferences(AppPreferences.FILE_SETTINGS, MODE_PRIVATE)
+        val style = settingsPrefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)
+        viewModel.applyDefaultTabForStyle(style)
         viewModel.onPermissionsReady()
 
         // Debug preview mode: skip default-dialer and accessibility prompting.
@@ -475,6 +509,31 @@ class MainActivity : ComponentActivity() {
             }
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    // ── Trackpad / scroll-wheel vertical scroll → list navigation ─────────
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
+        if (event.source and InputDevice.SOURCE_CLASS_POINTER != 0 &&
+            event.action == MotionEvent.ACTION_SCROLL) {
+            val scroll = event.getAxisValue(MotionEvent.AXIS_VSCROLL)
+            if (scroll != 0f) {
+                val state = viewModel.uiState.value
+                when {
+                    // Pixel Favorites tab (tab 0 in Pixel theme only)
+                    viewModel.isPixelTheme && viewModel.currentTabIndex == 0 -> {
+                        if (scroll < 0) viewModel.nudgeFavoriteSuggestionDown()
+                        else viewModel.nudgeFavoriteSuggestionUp()
+                    }
+                    // All other tabs — move selection up/down
+                    else -> {
+                        if (scroll < 0) viewModel.nudgeSelectionDown()
+                        else viewModel.nudgeSelectionUp()
+                    }
+                }
+                return true
+            }
+        }
+        return super.onGenericMotionEvent(event)
     }
 
     // ── Toolbar button callbacks (via AccessibilityService) ────────────────

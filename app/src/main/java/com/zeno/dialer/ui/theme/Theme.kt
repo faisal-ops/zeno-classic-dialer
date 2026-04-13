@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.zeno.dialer.AppPreferences
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -89,7 +90,7 @@ private val AppTypographyModernClassic = Typography(
     labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.4.sp)
 )
 
-enum class DialerStyle { ORIGINAL_CLASSIC, MODERN_CLASSIC }
+enum class DialerStyle { ORIGINAL_CLASSIC, MODERN_CLASSIC, PIXEL }
 
 internal data class DialerColorTokens(
     val bgPage: Color,
@@ -192,6 +193,79 @@ private val BBClassicDarkColorScheme = darkColorScheme(
     onError                = Color(0xFFE8E8E8),
 )
 
+// ── Pixel typography ────────────────────────────────────────────────────────
+
+private val AppTypographyPixel = Typography(
+    headlineLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 30.sp, lineHeight = 37.sp, letterSpacing = 0.sp),
+    headlineMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 28.sp, lineHeight = 35.sp),
+    titleLarge = TextStyle(fontWeight = FontWeight.Light, fontSize = 32.sp, lineHeight = 41.sp, letterSpacing = 3.5.sp),
+    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 28.sp),
+    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 18.sp, lineHeight = 28.sp),
+    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 25.sp),
+    bodySmall = TextStyle(fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 21.sp),
+    labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 25.sp),
+    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 21.sp),
+    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 18.sp, letterSpacing = 1.2.sp)
+)
+
+// ── Pixel color schemes (Google Material You palette) ───────────────────────
+
+private val PixelDarkColorScheme = darkColorScheme(
+    primary                = Color(0xFF8AB4F8),
+    onPrimary              = Color(0xFF0F1115),
+    primaryContainer       = Color(0xFF283244),
+    onPrimaryContainer     = Color(0xFFD8E6FF),
+    secondary              = Color(0xFF9AA3B2),
+    onSecondary            = Color(0xFF0F1115),
+    secondaryContainer     = Color(0xFF1D2330),
+    onSecondaryContainer   = Color(0xFFE5EAF4),
+    tertiary               = Color(0xFF8AB4F8),
+    onTertiary             = Color(0xFF0F1115),
+    background             = Color(0xFF111318),
+    onBackground           = Color(0xFFE8EAED),
+    surface                = Color(0xFF171A21),
+    onSurface              = Color(0xFFE8EAED),
+    surfaceVariant         = Color(0xFF1F2430),
+    onSurfaceVariant       = Color(0xFF9AA3B2),
+    surfaceContainerLowest = Color(0xFF111318),
+    surfaceContainerLow    = Color(0xFF171A21),
+    surfaceContainer       = Color(0xFF1F2430),
+    surfaceContainerHigh   = Color(0xFF252B38),
+    surfaceContainerHighest= Color(0xFF2C3442),
+    outline                = Color(0xFF3D4556),
+    outlineVariant         = Color(0xFF2C3442),
+    error                  = Color(0xFFCC4444),
+    onError                = Color(0xFFFFFFFF),
+)
+
+private val PixelLightColorScheme = lightColorScheme(
+    primary                = Color(0xFF4285F4),
+    onPrimary              = Color(0xFFFFFFFF),
+    primaryContainer       = Color(0xFFE8F0FE),
+    onPrimaryContainer     = Color(0xFF1A1A1A),
+    secondary              = Color(0xFF6F7480),
+    onSecondary            = Color(0xFFFFFFFF),
+    secondaryContainer     = Color(0xFFEFF2F8),
+    onSecondaryContainer   = Color(0xFF1A1A1A),
+    tertiary               = Color(0xFF4285F4),
+    onTertiary             = Color(0xFFFFFFFF),
+    background             = Color(0xFFF8F9FC),
+    onBackground           = Color(0xFF1A1A1A),
+    surface                = Color(0xFFFFFFFF),
+    onSurface              = Color(0xFF1A1A1A),
+    surfaceVariant         = Color(0xFFEFF2F8),
+    onSurfaceVariant       = Color(0xFF6F7480),
+    surfaceContainerLowest = Color(0xFFF8F9FC),
+    surfaceContainerLow    = Color(0xFFFFFFFF),
+    surfaceContainer       = Color(0xFFEFF2F8),
+    surfaceContainerHigh   = Color(0xFFEFF2F8),
+    surfaceContainerHighest= Color(0xFFE8ECF4),
+    outline                = Color(0xFFD9DEE8),
+    outlineVariant         = Color(0xFFE2E6EE),
+    error                  = Color(0xFFCC4444),
+    onError                = Color(0xFFFFFFFF),
+)
+
 // ── BB Classic custom color tokens ───────────────────────────────────────────
 
 private val BBLightTokens = DialerColorTokens(
@@ -226,6 +300,40 @@ private val BBDarkTokens = DialerColorTokens(
     badgeStar     = Color(0xFFD94A53),
 )
 
+// ── Pixel custom color tokens ────────────────────────────────────────────────
+
+private val PixelDarkTokens = DialerColorTokens(
+    bgPage        = Color(0xFF111318),
+    bgSurface     = Color(0xFF171A21),
+    bgElevated    = Color(0xFF1F2430),
+    textPrimary   = Color(0xFFE8EAED),
+    textSecondary = Color(0xFF9AA3B2),
+    textHint      = Color(0xFF6F788A),
+    border        = Color(0xFF2C3442),
+    focusBorder   = Color(0xFF8AB4F8),
+    surfaceActive = Color(0xFF283244),
+    accent        = Color(0xFF8AB4F8),
+    accentMuted   = Color(0xFF78A6F0),
+    danger        = Color(0xFFCC4444),
+    badgeStar     = Color(0xFFD94A53),
+)
+
+private val PixelLightTokens = DialerColorTokens(
+    bgPage        = Color(0xFFF8F9FC),
+    bgSurface     = Color(0xFFFFFFFF),
+    bgElevated    = Color(0xFFEFF2F8),
+    textPrimary   = Color(0xFF1F1F1F),
+    textSecondary = Color(0xFF6F7480),
+    textHint      = Color(0xFF9AA3B2),
+    border        = Color(0xFFE2E6EE),
+    focusBorder   = Color(0xFF4285F4),
+    surfaceActive = Color(0xFFE8F0FE),
+    accent        = Color(0xFF4285F4),
+    accentMuted   = Color(0xFF5A95F5),
+    danger        = Color(0xFFCC4444),
+    badgeStar     = Color(0xFFE53935),
+)
+
 @Composable
 fun DialerTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
@@ -247,21 +355,28 @@ fun DialerTheme(content: @Composable () -> Unit) {
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    // BB Classic UI is light-first; match debug appearance in release too (system dark does not apply).
-    // User can still pick explicit Dark in Display Options (choose_theme = 2).
-    val isDark = when (themeChoice) {
-        1 -> false
-        2 -> true
-        else -> false
+    val dialerStyle = when (dialerStylePref) {
+        AppPreferences.DIALER_STYLE_ORIGINAL_CLASSIC -> DialerStyle.ORIGINAL_CLASSIC
+        AppPreferences.DIALER_STYLE_PIXEL -> DialerStyle.PIXEL
+        else -> DialerStyle.MODERN_CLASSIC
     }
 
-    val colorScheme = if (isDark) BBClassicDarkColorScheme else BBClassicLightColorScheme
-    val baseTokens = if (isDark) BBDarkTokens else BBLightTokens
-    val dialerStyle = if (dialerStylePref == AppPreferences.DIALER_STYLE_ORIGINAL_CLASSIC) {
-        DialerStyle.ORIGINAL_CLASSIC
-    } else {
-        DialerStyle.MODERN_CLASSIC
+    val systemDark = isSystemInDarkTheme()
+    // Theme brightness rules:
+    //   Original Classic  → always light (preserves original BB look)
+    //   Modern Classic    → always dark  (its dark-navy palette is its identity)
+    //   Pixel             → follows system dark/light; explicit override via choose_theme (1=light, 2=dark)
+    val isDark = when (dialerStyle) {
+        DialerStyle.ORIGINAL_CLASSIC -> false           // always light
+        DialerStyle.MODERN_CLASSIC   -> true            // always dark
+        DialerStyle.PIXEL            -> systemDark      // always follows system — ignores KEY_CHOOSE_THEME
     }
+
+    val colorScheme = when (dialerStyle) {
+        DialerStyle.PIXEL -> if (isDark) PixelDarkColorScheme else PixelLightColorScheme
+        else -> if (isDark) BBClassicDarkColorScheme else BBClassicLightColorScheme
+    }
+    val baseTokens = if (isDark) BBDarkTokens else BBLightTokens
     val tokens = when (dialerStyle) {
         DialerStyle.ORIGINAL_CLASSIC -> baseTokens
         DialerStyle.MODERN_CLASSIC -> baseTokens.copy(
@@ -276,12 +391,17 @@ fun DialerTheme(content: @Composable () -> Unit) {
             accentMuted = if (isDark) Color(0xFF5D83CC) else Color(0xFF638ED9),
             surfaceActive = if (isDark) Color(0xFF15253D) else Color(0xFF182A45)
         )
+        DialerStyle.PIXEL -> if (isDark) PixelDarkTokens else PixelLightTokens
     }
     val motion = when (dialerStyle) {
         DialerStyle.ORIGINAL_CLASSIC -> DialerMotionTokens(70, 150)
-        DialerStyle.MODERN_CLASSIC -> DialerMotionTokens(60, 100)
+        else -> DialerMotionTokens(60, 100)
     }
-    val typography = if (dialerStyle == DialerStyle.MODERN_CLASSIC) AppTypographyModernClassic else AppTypography
+    val typography = when (dialerStyle) {
+        DialerStyle.ORIGINAL_CLASSIC -> AppTypography
+        DialerStyle.PIXEL -> AppTypographyPixel
+        else -> AppTypographyModernClassic
+    }
 
     CompositionLocalProvider(
         LocalDialerColors provides tokens,

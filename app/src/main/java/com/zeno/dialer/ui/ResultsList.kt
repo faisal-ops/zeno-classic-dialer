@@ -111,9 +111,10 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+// Sheet colors are now driven by theme tokens (TextPrimary, TextSecondary, Border, BgSurface, BgElevated).
+// These constants are kept only for Classic-specific tint on SheetOption icons/labels.
 private val ClassicSheetText = Color(0xFF1A1A1A)
 private val ClassicSheetTextMuted = Color(0xFF626262)
-private val ClassicSheetDivider = Color(0xFFDDDDDD)
 
 // ── Row types ────────────────────────────────────────────────────────────────
 
@@ -339,6 +340,7 @@ fun ResultsList(
                     is ListRow.Item -> {
                         val c = row.contact
                         val idx = row.idx
+                        val isPixelRow = IsPixel
                         Column(
                             modifier = Modifier.bringIntoViewRequester(rowBringers[idx])
                         ) {
@@ -352,8 +354,36 @@ fun ResultsList(
                                         onDoubleClick = { onDoubleTap(idx) },
                                         onLongClick = { actionTarget = c to idx }
                                     ),
+                                onMessageTap = { quickMsgTarget = c },
+                                onCallTap = { onCallNumber(c.number) },
                             )
-                            if (expandedIndex == idx && expandedHistory.isNotEmpty()) {
+                            if (isPixelRow) {
+                                AnimatedVisibility(
+                                    visible = expandedIndex == idx,
+                                    enter   = expandVertically(),
+                                    exit    = shrinkVertically()
+                                ) {
+                                    ExpandedPanel(
+                                        contact   = c,
+                                        onCall    = { onCallNumber(c.number) },
+                                        onMessage = {
+                                            context.startActivity(
+                                                Intent(Intent.ACTION_SENDTO).apply {
+                                                    data = Uri.parse("smsto:${c.number}")
+                                                }
+                                            )
+                                        },
+                                        onHistory = {
+                                            context.startActivity(
+                                                Intent(context, CallHistoryDetailActivity::class.java).apply {
+                                                    putExtra(CallHistoryDetailActivity.EXTRA_NUMBER, c.number)
+                                                    putExtra(CallHistoryDetailActivity.EXTRA_NAME, c.name)
+                                                }
+                                            )
+                                        }
+                                    )
+                                }
+                            } else if (expandedIndex == idx && expandedHistory.isNotEmpty()) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -372,11 +402,12 @@ fun ResultsList(
 
     // ── Action bottom sheet ───────────────────────────────────────────────────
     actionTarget?.let { (contact, _) ->
+        val isThemedSheet = IsModernClassic || IsPixel
         ModalBottomSheet(
             onDismissRequest = { dismissSheet() },
             sheetState       = sheetState,
             shape            = RectangleShape,
-            containerColor   = Color.White,
+            containerColor   = if (isThemedSheet) BgSurface else Color.White,
             tonalElevation   = 0.dp,
             dragHandle       = {
                 Box(
@@ -389,7 +420,7 @@ fun ResultsList(
                         modifier = Modifier
                             .width(36.dp)
                             .height(3.dp)
-                            .background(Color(0xFFBBBBBB))
+                            .background(if (isThemedSheet) Border else Color(0xFFBBBBBB))
                     )
                 }
             }
@@ -401,11 +432,11 @@ fun ResultsList(
                     .verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
             ) {
-            // Header — flat classic bar
+            // Header
             Row(
                 modifier          = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFF5F5F5))
+                    .background(if (isThemedSheet) BgElevated else Color(0xFFF5F5F5))
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -414,7 +445,7 @@ fun ResultsList(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text       = contact.name,
-                        color      = ClassicSheetText,
+                        color      = TextPrimary,
                         fontSize   = 18.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines   = 1,
@@ -422,13 +453,13 @@ fun ResultsList(
                     )
                     Text(
                         text     = contact.number,
-                        color    = ClassicSheetTextMuted,
+                        color    = TextSecondary,
                         fontSize = 14.sp
                     )
                 }
             }
 
-            HorizontalDivider(color = ClassicSheetDivider, thickness = 1.dp)
+            HorizontalDivider(color = Border, thickness = 1.dp)
 
             // Options — BB-style flat list; primary “Call” in accent blue
             SheetOption(
@@ -514,7 +545,7 @@ fun ResultsList(
             SheetOption(
                 icon  = Icons.Default.Delete,
                 label = "Delete from log history",
-                tint  = Color(0xFFCC4444)
+                tint  = if (isThemedSheet) Danger else Color(0xFFCC4444)
             ) {
                 showDeleteConfirm = true
             }
@@ -526,11 +557,12 @@ fun ResultsList(
 
     // ── Quick-response message sheet ─────────────────────────────────────────
     quickMsgTarget?.let { contact ->
+        val isThemedMsgSheet = IsModernClassic || IsPixel
         ModalBottomSheet(
             onDismissRequest = { quickMsgTarget = null },
             sheetState       = quickMsgSheetState,
             shape            = RectangleShape,
-            containerColor   = Color.White,
+            containerColor   = if (isThemedMsgSheet) BgSurface else Color.White,
             tonalElevation   = 0.dp,
             dragHandle       = {
                 Box(
@@ -543,7 +575,7 @@ fun ResultsList(
                         modifier = Modifier
                             .width(36.dp)
                             .height(3.dp)
-                            .background(Color(0xFFBBBBBB))
+                            .background(if (isThemedMsgSheet) Border else Color(0xFFBBBBBB))
                     )
                 }
             }
@@ -693,7 +725,7 @@ fun ResultsList(
                                 onDelete(number)
                             }
                         ) {
-                            Text("Delete", color = Color(0xFFCC4444), fontSize = 16.sp)
+                            Text("Delete", color = if (IsModernClassic || IsPixel) Danger else Color(0xFFCC4444), fontSize = 16.sp)
                         }
                     }
                 }
@@ -758,9 +790,10 @@ private fun callTypeLabel(type: Int) = when (type) {
 private fun SheetOption(
     icon: ImageVector,
     label: String,
-    tint: Color = ClassicSheetText,
+    tint: Color? = null,
     onClick: () -> Unit
 ) {
+    val resolvedTint = tint ?: TextPrimary
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -772,18 +805,18 @@ private fun SheetOption(
             Icon(
                 imageVector        = icon,
                 contentDescription = label,
-                tint               = tint,
+                tint               = resolvedTint,
                 modifier           = Modifier.size(22.dp)
             )
             Spacer(Modifier.width(14.dp))
             Text(
                 text = label,
-                color = tint,
+                color = resolvedTint,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Normal
             )
         }
-        HorizontalDivider(color = ClassicSheetDivider, thickness = 1.dp)
+        HorizontalDivider(color = Border, thickness = 1.dp)
     }
 }
 
@@ -823,15 +856,15 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 
 @Composable
 private fun DateHeaderRow(label: String) {
-    val isModern = IsModernClassic
+    val isModernOrPixel = IsModernClassic || IsPixel
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (isModern) Modifier.background(BgSurface) else Modifier)
+            .then(if (isModernOrPixel) Modifier.background(BgSurface) else Modifier)
             .padding(horizontal = 10.dp)
             .padding(top = 7.dp, bottom = 4.dp)
     ) {
-        if (isModern) {
+        if (isModernOrPixel) {
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
@@ -843,12 +876,12 @@ private fun DateHeaderRow(label: String) {
         }
         Text(
             text  = label,
-            color = if (isModern) TextSecondary else TextPrimary,
+            color = if (isModernOrPixel) TextSecondary else TextPrimary,
             style = MaterialTheme.typography.bodySmall.copy(
-                fontWeight = if (isModern) FontWeight.Medium else FontWeight.Normal,
-                fontSize   = if (isModern) 12.sp else 14.sp
+                fontWeight = if (isModernOrPixel) FontWeight.Medium else FontWeight.Normal,
+                fontSize   = if (isModernOrPixel) 12.sp else 14.sp
             ),
-            modifier = Modifier.padding(start = if (isModern) 10.dp else 0.dp)
+            modifier = Modifier.padding(start = if (isModernOrPixel) 10.dp else 0.dp)
         )
     }
 }
@@ -869,14 +902,136 @@ private fun SectionLabelRow(title: String) {
 
 @Composable
 private fun ContactRow(
-    contact: Contact,
+    contact:      Contact,
+    selected:     Boolean,
+    modifier:     Modifier = Modifier,
+    onMessageTap: () -> Unit = {},
+    onCallTap:    () -> Unit = {},
+) {
+    if (IsPixel) {
+        PixelContactRow(
+            contact      = contact,
+            selected     = selected,
+            modifier     = modifier,
+            onMessageTap = onMessageTap,
+            onCallTap    = onCallTap,
+        )
+    } else {
+        ClassicContactRow(contact = contact, selected = selected, modifier = modifier)
+    }
+}
+
+@Composable
+private fun PixelContactRow(
+    contact:      Contact,
+    selected:     Boolean,
+    modifier:     Modifier = Modifier,
+    onMessageTap: () -> Unit,
+    onCallTap:    () -> Unit,
+) {
+    val rowBg        = if (selected) SurfaceActive else Color.Transparent
+    val nameColor    = if (selected) Accent else TextPrimary
+    val secondaryColor = if (selected) AccentMuted else TextSecondary
+
+    Row(
+        modifier          = modifier.background(rowBg),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(50.dp)
+                    .background(Accent)
+            )
+        }
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .padding(
+                    start  = if (selected) 10.dp else 12.dp,
+                    end    = 8.dp,
+                    top    = 8.dp,
+                    bottom = 8.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ContactAvatar(name = contact.name, photoUri = contact.photoUri, size = 44)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text     = contact.name,
+                    color    = nameColor,
+                    style    = contactListPrimaryTextStyle(selected),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(1.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (contact.isRecent) {
+                        PixelCallTypeIcon(callType = contact.callType, selected = selected)
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    val secondaryText = remember(contact.number, contact.lastCallTime) {
+                        buildSecondaryLine(contact)
+                    }
+                    Text(
+                        text     = secondaryText,
+                        color    = secondaryColor,
+                        style    = contactListSecondaryTextStyle(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(Modifier.width(4.dp))
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(BgElevated)
+                    .clickable { onMessageTap() }
+                    .border(1.dp, Border, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector        = Icons.AutoMirrored.Filled.Message,
+                    contentDescription = "Message",
+                    tint               = Accent,
+                    modifier           = Modifier.size(15.dp)
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(BgElevated)
+                    .clickable { onCallTap() }
+                    .border(1.dp, Border, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.Phone,
+                    contentDescription = "Call",
+                    tint               = Accent,
+                    modifier           = Modifier.size(15.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClassicContactRow(
+    contact:  Contact,
     selected: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val rowBg = if (selected) SurfaceActive else Color.Transparent
     val isMissed = contact.isRecent && contact.callType == CallLog.Calls.MISSED_TYPE
     val isModernRow = IsModernClassic
-    val missedColor = if (isModernRow) Danger else Color(0xFFC0392B)
+    val missedColor = Danger
     val nameColor = if (isMissed) missedColor else TextPrimary
     val secondaryColor = TextSecondary
 
@@ -936,7 +1091,7 @@ private fun ContactRow(
                 }
             }
 
-            // Right side: time + chevron (matches HTML layout)
+            // Right side: time + chevron
             if (contact.isRecent && contact.lastCallTime > 0L) {
                 Column(
                     horizontalAlignment = Alignment.End,
@@ -968,6 +1123,26 @@ private fun ContactRow(
             }
         }
     }
+}
+
+@Composable
+private fun PixelCallTypeIcon(callType: Int, selected: Boolean) {
+    val (icon, color) = when (callType) {
+        CallLog.Calls.MISSED_TYPE ->
+            Icons.AutoMirrored.Filled.CallMissed to if (selected) Color(0xFFFF6B6B) else Color(0xFFCC3333)
+        CallLog.Calls.INCOMING_TYPE ->
+            Icons.AutoMirrored.Filled.CallReceived to if (selected) AccentGreen else TextSecondary
+        CallLog.Calls.OUTGOING_TYPE ->
+            Icons.AutoMirrored.Filled.CallMade to if (selected) AccentGreen else TextSecondary
+        else ->
+            Icons.AutoMirrored.Filled.PhoneCallback to TextSecondary
+    }
+    Icon(
+        imageVector        = icon,
+        contentDescription = null,
+        tint               = color,
+        modifier           = Modifier.size(14.dp)
+    )
 }
 
 // ── Expanded inline panel (stock-dialer style) ──────────────────────────────

@@ -24,8 +24,8 @@ android {
         // Android 10+ — default dialer / RoleManager / modern Telecom. Lower API needs extra guards.
         minSdk = 29
         targetSdk = 34
-        versionCode = 13
-        versionName = "1.1.0"
+        versionCode = 14
+        versionName = "2.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -59,6 +59,16 @@ android {
                 signingConfigs.getByName("debug")
             }
         }
+    }
+
+    applicationVariants.all {
+        val variant = this
+        variant.outputs
+            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .forEach { output ->
+                val versionName = variant.versionName
+                output.outputFileName = "zeno-classic-dialer-v${versionName}.apk"
+            }
     }
 
     compileOptions {

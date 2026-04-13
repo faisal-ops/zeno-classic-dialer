@@ -13,6 +13,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,8 +72,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zeno.dialer.ui.Accent
 import com.zeno.dialer.ui.BgPage
 import com.zeno.dialer.ui.BgElevated
+import com.zeno.dialer.ui.Border
+import com.zeno.dialer.ui.SurfaceActive
 import com.zeno.dialer.ui.TextHint
 import com.zeno.dialer.ui.TextPrimary
 import com.zeno.dialer.ui.TextSecondary
@@ -195,6 +201,10 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
                     onClick = { launchSafe(context, Intent("android.settings.CALL_SETTINGS")) })
             }
             item {
+                SettingsNavItem(icon = Icons.Default.Settings, title = "Display options",
+                    onClick = { onNavigate(SettingsPage.DISPLAY_OPTIONS) })
+            }
+            item {
                 SettingsNavItem(icon = Icons.Default.QuestionAnswer, title = "Quick responses",
                     onClick = { onNavigate(SettingsPage.QUICK_RESPONSES) })
             }
@@ -221,10 +231,6 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
             item {
                 SettingsNavItem(icon = Icons.Default.Notifications, title = "Caller ID announcement",
                     onClick = { onNavigate(SettingsPage.CALLER_ID_ANNOUNCEMENT) })
-            }
-            item {
-                SettingsNavItem(icon = Icons.Default.Settings, title = "Display options",
-                    onClick = { onNavigate(SettingsPage.DISPLAY_OPTIONS) })
             }
             item {
                 SettingsNavItem(icon = Icons.Default.Phone, title = "Flip To Silence",
@@ -371,12 +377,7 @@ private fun DisplayOptionsScreen(onBack: () -> Unit) {
     val prefs = rememberPrefs()
     var portraitMode by remember { mutableStateOf(prefs.getBoolean(AppPreferences.KEY_PORTRAIT_MODE, true)) }
     var themeChoice by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)) }
-    var sortBy by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_SORT_BY, 0)) }
-    var nameFormat by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_NAME_FORMAT, 0)) }
-
-    val themes = listOf("Original Classic", "Modern Classic")
-    val sortOptions = listOf("First name", "Last name")
-    val nameOptions = listOf("First name first", "Last name first")
+    val themes = listOf("Original Classic", "Modern Classic", "Pixel")
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
         SettingsTopBar(title = "Display options", onBack = onBack)
@@ -392,7 +393,6 @@ private fun DisplayOptionsScreen(onBack: () -> Unit) {
                 themeChoice = it
                 prefs.edit()
                     .putInt(AppPreferences.KEY_DIALER_STYLE, it)
-                    .putInt(AppPreferences.KEY_CHOOSE_THEME, it)
                     .apply()
             }
         )
@@ -407,27 +407,6 @@ private fun DisplayOptionsScreen(onBack: () -> Unit) {
             onToggle = { portraitMode = it; prefs.edit().putBoolean(AppPreferences.KEY_PORTRAIT_MODE, it).apply() }
         )
 
-        Spacer(Modifier.height(8.dp))
-        SettingsDivider()
-        Spacer(Modifier.height(16.dp))
-
-        // Contacts
-        SectionLabel("Contacts")
-        PickerRow(
-            title = "Sort by",
-            currentValue = sortOptions[sortBy],
-            options = sortOptions,
-            selectedIndex = sortBy,
-            onSelect = { sortBy = it; prefs.edit().putInt(AppPreferences.KEY_SORT_BY, it).apply() }
-        )
-        Spacer(Modifier.height(8.dp))
-        PickerRow(
-            title = "Name format",
-            currentValue = nameOptions[nameFormat],
-            options = nameOptions,
-            selectedIndex = nameFormat,
-            onSelect = { nameFormat = it; prefs.edit().putInt(AppPreferences.KEY_NAME_FORMAT, it).apply() }
-        )
     }
 }
 
@@ -682,8 +661,12 @@ private fun SettingsTopBar(title: String, onBack: () -> Unit) {
 @Composable
 private fun SectionHeader(title: String) {
     Text(
-        text = title, color = AccentGreen, fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 6.dp)
+        text = title.uppercase(),
+        color = AccentGreen,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.2.sp,
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp)
     )
 }
 
@@ -703,27 +686,57 @@ private fun SettingsNavItem(
     showDividerBelow: Boolean = true,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    var isFocused by remember { mutableStateOf(false) }
+    val highlighted = isPressed || isFocused
+
     Column(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onClick() }
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .onFocusChanged { isFocused = it.isFocused }
+                .clickable(interactionSource = interactionSource, indication = null) { onClick() }
+                .background(if (highlighted) SurfaceActive else Color.Transparent)
+                .padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, title, tint = TextSecondary, modifier = Modifier.size(22.dp))
+            // Blue focus bar (same style as call log rows)
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(40.dp)
+                    .background(if (highlighted) Accent else Color.Transparent)
+            )
+            Spacer(Modifier.width(17.dp))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (highlighted) Accent.copy(alpha = 0.15f) else BgElevated),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, title, tint = if (highlighted) Accent else AccentGreen, modifier = Modifier.size(20.dp))
+            }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = TextPrimary, fontSize = 18.sp)
+                Text(
+                    title,
+                    color = if (highlighted) Accent else TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Normal
+                )
                 if (subtitle != null) {
                     Spacer(Modifier.height(2.dp))
-                    Text(subtitle, color = TextSecondary, fontSize = 15.sp)
+                    Text(subtitle, color = TextSecondary, fontSize = 13.sp)
                 }
             }
             Icon(
                 Icons.Default.ChevronRight, null,
-                tint = TextSecondary, modifier = Modifier.size(18.dp)
+                tint = if (highlighted) Accent else TextSecondary.copy(alpha = 0.5f),
+                modifier = Modifier.size(18.dp)
             )
+            Spacer(Modifier.width(16.dp))
         }
         if (showDividerBelow) {
             ClassicSettingsRowDivider()
@@ -858,8 +871,8 @@ private fun PickerRow(
 @Composable
 private fun SettingsDivider() {
     HorizontalDivider(
-        color = MaterialTheme.colorScheme.outlineVariant,
-        thickness = 0.5.dp,
+        color = Border,
+        thickness = 0.8.dp,
         modifier = Modifier.padding(horizontal = 20.dp)
     )
 }
@@ -868,8 +881,8 @@ private fun SettingsDivider() {
 @Composable
 private fun ClassicSettingsRowDivider() {
     HorizontalDivider(
-        color = MaterialTheme.colorScheme.outlineVariant,
-        thickness = 0.5.dp,
+        color = Border,
+        thickness = 0.8.dp,
         modifier = Modifier.padding(start = 58.dp, end = 20.dp)
     )
 }

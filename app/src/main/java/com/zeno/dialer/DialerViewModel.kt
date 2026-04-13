@@ -16,6 +16,7 @@ import com.zeno.dialer.data.BlockedNumbersRepo
 import com.zeno.dialer.data.ContactsRepo
 import com.zeno.dialer.data.FavoritesRepo
 import com.zeno.dialer.data.FilterMode
+import com.zeno.dialer.data.RecentsDiskCache
 import com.zeno.dialer.data.RecentsRepo
 import com.zeno.dialer.data.SearchEngine
 import kotlinx.coroutines.Dispatchers
@@ -112,10 +113,41 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     private var callLogObserverRegistered = false
 
+    /** Tracks the last style we applied a default tab for, to detect theme changes. -1 = never applied. */
+    private var lastDefaultTabStyle: Int = -1
+
+    /** True when Pixel theme is active — used by KeyHandler to route tab-0 correctly. */
+    val isPixelTheme: Boolean
+        get() = lastDefaultTabStyle == AppPreferences.DIALER_STYLE_PIXEL
+
+    /**
+     * Apply the theme-appropriate default tab.
+     * Pixel → Home (index 1), Classic → Calls (index 0).
+     * Only changes the tab if the style has changed since we last applied it,
+     * or if this is the very first call (cold start).
+     */
+    fun applyDefaultTabForStyle(style: Int) {
+        if (style == lastDefaultTabStyle) return   // style unchanged, user may have navigated — don't override
+        lastDefaultTabStyle = style
+        val defaultIndex = if (style == AppPreferences.DIALER_STYLE_PIXEL) 1 else 0
+        _uiState.update { it.copy(currentTabIndex = defaultIndex) }
+    }
+
     init {
-        // Pre-warm contacts cache on startup (background thread)
+        // ── Instant startup: show disk-cached recents on the very first frame ──
+        val diskCached = RecentsDiskCache.load(getApplication())
+        if (diskCached.isNotEmpty()) {
+            _uiState.update { it.copy(results = diskCached) }
+        }
+
+        // ── Background refresh: fetch live data and update + persist ────────
         viewModelScope.launch(Dispatchers.IO) {
-            try { contactsRepo.search("") } catch (_: SecurityException) { }
+            try {
+                contactsRepo.search("")           // warm contacts index in parallel
+                val fresh = searchEngine.search("", FilterMode.ALL)
+                _uiState.update { it.copy(results = fresh) }
+                RecentsDiskCache.save(getApplication(), fresh)
+            } catch (_: SecurityException) { }
         }
 
         // Reactive search with collectLatest for automatic cancellation
@@ -347,6 +379,24 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(favoriteFocusIndex = index, selectedIndex = -1) }
     }
 
+    /** Navigate DOWN through the Pixel Favorites suggestions list. */
+    fun nudgeFavoriteSuggestionDown() {
+        _uiState.update { state ->
+            val max = state.favoriteSuggestions.lastIndex
+            if (max < 0) return@update state
+            val next = (state.favoriteFocusIndex + 1).coerceAtMost(max)
+            state.copy(favoriteFocusIndex = next, selectedIndex = -1)
+        }
+    }
+
+    /** Navigate UP through the Pixel Favorites suggestions list. */
+    fun nudgeFavoriteSuggestionUp() {
+        _uiState.update { state ->
+            val next = state.favoriteFocusIndex - 1
+            state.copy(favoriteFocusIndex = if (next < 0) -1 else next, selectedIndex = -1)
+        }
+    }
+
     fun setScrollFocusedIndex(index: Int) {
         // Clear selectedIndex so the CALL key falls through to scrollFocusedIndex instead of
         // dialing a stale D-pad selection that is no longer visible.
@@ -427,6 +477,10 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
                     scrollFocusedIndex = if (keepSelection) it.scrollFocusedIndex else -1,
                     keypadContactMatch = keypadMatch
                 )
+            }
+            // Persist for next cold start
+            if (state.query.isBlank() && state.filterMode == FilterMode.ALL) {
+                RecentsDiskCache.save(getApplication(), results)
             }
         }
         refreshFavorites()

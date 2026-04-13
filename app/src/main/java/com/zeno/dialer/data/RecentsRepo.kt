@@ -10,6 +10,13 @@ class RecentsRepo(private val context: Context) {
 
     private val phoneLookupCache = HashMap<String, Triple<String?, String?, Long>>(128)
 
+    // ── Result cache: stores last full fetch so the UI can show instantly on re-open ──
+    @Volatile private var cachedResults: List<Contact> = emptyList()
+    @Volatile private var cacheValidForQuery: String? = null   // null = never warmed
+
+    /** Returns cached results immediately if available, then caller can refresh async. */
+    fun getCachedResults(): List<Contact> = cachedResults
+
     fun search(
         query: String,
         missedOnly: Boolean = false,
@@ -104,7 +111,13 @@ class RecentsRepo(private val context: Context) {
             }
         }
 
-        return if (query.isBlank()) recents else FuzzySearch.rank(query, recents).take(limit)
+        val result = if (query.isBlank()) recents else FuzzySearch.rank(query, recents).take(limit)
+        // Update cache for blank queries (the common startup case)
+        if (query.isBlank() && !missedOnly && !incomingOnly) {
+            cachedResults = result
+            cacheValidForQuery = ""
+        }
+        return result
     }
 
     fun getHistoryForNumber(number: String, limit: Int = 100): List<Contact> {
@@ -171,7 +184,11 @@ class RecentsRepo(private val context: Context) {
         } catch (_: Exception) { 0 }
     }
 
-    fun clearLookupCache() { phoneLookupCache.clear() }
+    fun clearLookupCache() {
+        phoneLookupCache.clear()
+        cachedResults = emptyList()
+        cacheValidForQuery = null
+    }
 
     private fun phoneLookupCached(number: String): Triple<String?, String?, Long> {
         if (number.isBlank()) return Triple(null, null, 0L)

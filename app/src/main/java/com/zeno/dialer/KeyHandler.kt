@@ -118,11 +118,16 @@ class KeyHandler(
             if (allowDpadNavStep()) {
                 val state = viewModel.uiState.value
                 when {
-                    state.favoriteFocusIndex >= 0 -> { /* already at top row, nowhere to go */ }
-                    // Contacts tab: at first *visual* row, UP scrolls list to top (not results[0]).
+                    // Pixel Favorites tab (tab 0 in Pixel theme only)
+                    viewModel.isPixelTheme && viewModel.currentTabIndex == 0 ->
+                        viewModel.nudgeFavoriteSuggestionUp()
+                    // Classic: tile row already focused — nowhere up to go
+                    !viewModel.isPixelTheme && state.favoriteFocusIndex >= 0 -> { /* at top */ }
+                    // Contacts tab: at first visual row, UP scrolls list to top
                     viewModel.currentTabIndex == 1 && state.results.isNotEmpty() && viewModel.isContactsNavAtStart(state) ->
                         viewModel.scrollContactsToTop()
-                    viewModel.currentTabIndex == 0 && state.selectedIndex <= 0 ->
+                    // Classic Calls tab: at first result, UP jumps focus to favorite tiles
+                    !viewModel.isPixelTheme && viewModel.currentTabIndex == 0 && state.selectedIndex <= 0 ->
                         viewModel.setFavoriteFocus(0)
                     else -> viewModel.nudgeSelectionUp()
                 }
@@ -132,11 +137,16 @@ class KeyHandler(
         KeyEvent.KEYCODE_DPAD_DOWN -> {
             if (allowDpadNavStep()) {
                 val state = viewModel.uiState.value
-                if (state.favoriteFocusIndex >= 0) {
-                    viewModel.setFavoriteFocus(-1)
-                    viewModel.nudgeSelectionDown()
-                } else {
-                    viewModel.nudgeSelectionDown()
+                when {
+                    // Pixel Favorites tab (tab 0 in Pixel theme only)
+                    viewModel.isPixelTheme && viewModel.currentTabIndex == 0 ->
+                        viewModel.nudgeFavoriteSuggestionDown()
+                    // Classic: move focus from tile row down into the list
+                    !viewModel.isPixelTheme && state.favoriteFocusIndex >= 0 -> {
+                        viewModel.setFavoriteFocus(-1)
+                        viewModel.nudgeSelectionDown()
+                    }
+                    else -> viewModel.nudgeSelectionDown()
                 }
             }
             true
@@ -165,6 +175,14 @@ class KeyHandler(
         KeyEvent.KEYCODE_ENTER -> {
             val state = viewModel.uiState.value
             when {
+                // Pixel Favorites tab: dial the focused suggestion
+                viewModel.isPixelTheme && viewModel.currentTabIndex == 0 &&
+                    state.favoriteFocusIndex >= 0 &&
+                    state.favoriteFocusIndex < state.favoriteSuggestions.size -> {
+                    val contact = state.favoriteSuggestions[state.favoriteFocusIndex]
+                    onDebugTrace("Pixel Favorites: dialing ${contact.name}")
+                    onDial(contact.number)
+                }
                 // Contacts tab: open contact details in the Contacts app.
                 viewModel.currentTabIndex == 1 &&
                     state.selectedIndex >= 0 &&

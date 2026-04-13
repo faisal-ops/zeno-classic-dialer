@@ -32,6 +32,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,6 +71,7 @@ import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Phone
@@ -113,6 +115,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import android.view.HapticFeedbackConstants
@@ -199,6 +202,9 @@ internal val MotionStandardMs: Int
 internal val IsModernClassic: Boolean
     @Composable get() = LocalDialerStyle.current == DialerStyle.MODERN_CLASSIC
 
+internal val IsPixel: Boolean
+    @Composable get() = LocalDialerStyle.current == DialerStyle.PIXEL
+
 internal val AccentGreenBright = Color(0xFF69F0AE)
 
 internal val avatarPalette = listOf(
@@ -215,7 +221,10 @@ internal fun avatarColor(name: String): Color =
 enum class DialerTab(val label: String, @DrawableRes val iconRes: Int) {
     CALLS("Calls", R.drawable.ic_bb_calls),
     CONTACTS("Contacts", R.drawable.ic_bb_contacts),
-    KEYPAD("Dial Pad", R.drawable.ic_bb_dialpad)
+    KEYPAD("Dial Pad", R.drawable.ic_bb_dialpad),
+    // Pixel theme tabs — icon drawn via ImageVector in BottomNavBar; iconRes unused
+    FAVORITES("Favorites", R.drawable.ic_bb_calls),
+    HOME("Home", R.drawable.ic_bb_calls),
 }
 
 // ── Root screen ──────────────────────────────────────────────────────────────
@@ -228,7 +237,8 @@ fun DialerScreen(
 ) {
     val state      by viewModel.uiState.collectAsStateWithLifecycle()
     val activeCall by CallStateHolder.info.collectAsStateWithLifecycle()
-    val tab        = tabFromIndex(state.currentTabIndex)
+    val isPixelTheme = IsPixel
+    val tab        = if (isPixelTheme) pixelTabFromIndex(state.currentTabIndex) else tabFromIndex(state.currentTabIndex)
     val hasMissedCalls = remember(state.results, tab) {
         tab == DialerTab.CALLS && state.results.any { it.isRecent && it.callType == android.provider.CallLog.Calls.MISSED_TYPE }
     }
@@ -273,6 +283,16 @@ fun DialerScreen(
                 label         = "tab_transition"
             ) { currentTab ->
                 when (currentTab) {
+                    DialerTab.FAVORITES -> PixelFavoritesContent(state, viewModel, onMenuOpen = { showMenu = true })
+                    DialerTab.HOME -> PixelHomeContent(
+                        state,
+                        viewModel,
+                        onMenuOpen = { showMenu = true },
+                        onEditNumber = { number ->
+                            viewModel.setQueryDirect(number)
+                            viewModel.setCurrentTab(tabToIndex(DialerTab.KEYPAD))
+                        }
+                    )
                     DialerTab.CALLS -> CallsContent(state, viewModel, onMenuOpen = { showMenu = true })
                     DialerTab.CONTACTS   -> ContactsContent(
                         state,
@@ -288,7 +308,7 @@ fun DialerScreen(
                 }
             }
 
-            BottomNavBar(current = tab, showCallsBadge = hasMissedCalls, onSelect = { viewModel.setCurrentTab(tabToIndex(it)) })
+            BottomNavBar(current = tab, showCallsBadge = hasMissedCalls, isPixel = isPixelTheme, onSelect = { viewModel.setCurrentTab(tabToIndex(it)) })
         }
 
         // ── Scrim ────────────────────────────────────────────────────────────
@@ -323,12 +343,20 @@ private fun tabToIndex(tab: DialerTab): Int = when (tab) {
     DialerTab.CALLS -> 0
     DialerTab.CONTACTS -> 1
     DialerTab.KEYPAD -> 2
+    DialerTab.FAVORITES -> 0
+    DialerTab.HOME -> 1
 }
 
 private fun tabFromIndex(index: Int): DialerTab = when (index) {
     0 -> DialerTab.CALLS
     2 -> DialerTab.KEYPAD
     else -> DialerTab.CONTACTS
+}
+
+private fun pixelTabFromIndex(index: Int): DialerTab = when (index) {
+    0 -> DialerTab.FAVORITES
+    2 -> DialerTab.KEYPAD
+    else -> DialerTab.HOME
 }
 
 /** Number of items in the Contacts LazyColumn (section headers + rows, or empty placeholder). */
@@ -1175,6 +1203,11 @@ private fun normalizePastedDialText(raw: String): String {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
+    if (IsPixel) {
+        PixelKeypadContent(state = state, viewModel = viewModel)
+        return
+    }
+
     val hasInput = state.query.isNotBlank()
     val canCall  = hasInput
     val keypadMatch = state.keypadContactMatch
@@ -1681,15 +1714,307 @@ private fun DialpadButton(
     }
 }
 
-// ── Bottom nav bar ───────────────────────────────────────────────────────────
+// ── Pixel keypad ─────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PixelKeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
+    val matched     = state.results.firstOrNull()
+    val hasInput    = state.query.isNotBlank()
+    val activeCall  by CallStateHolder.info.collectAsStateWithLifecycle()
+    val duringCall  = activeCall != null
+    // During an active call typing keys sends DTMF, not a new call — hide the call button
+    val canCall     = hasInput && !duringCall
+
+    val view    = LocalView.current
+    val context = LocalContext.current
+    val clipboard = remember(context) {
+        context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+    }
+
+    val isLight = BgPage.luminance() > 0.5f
+    val keyBg   = if (isLight) Color(0xFFE4E7EC) else Color(0xFF2C2D31)  // stronger contrast on white
+    val keyText = if (isLight) Color(0xFF1A1A2E) else TextPrimary
+    val subText = if (isLight) Color(0xFF5F6368) else TextSecondary
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val g            = 10.dp                       // inter-key gap
+        val hPad         = 18.dp                       // side padding
+        val displayH     = 62.dp                       // number display row height
+        val callBtnH     = 54.dp                       // call pill height
+        val callGap      = 14.dp                       // gap between grid and call button
+        val bottomSpacer = 14.dp                       // gap below call button (above nav bar)
+        val topSpacer    = 10.dp                       // fixed top breathing room
+        val numRows      = dialpadKeys.size            // 4
+
+        val gridW = maxWidth - hPad * 2
+        val keyW  = (gridW - g * 2) / 3               // single key width
+
+        // Fill available space, allow taller pills for a premium feel
+        val idealRowH = (keyW.value * 0.65f).dp.coerceIn(52.dp, 90.dp)
+        // During a call the call button is hidden — give that space back to the key rows
+        val fixedH = topSpacer + displayH + g + g * (numRows - 1) + bottomSpacer +
+                if (duringCall) 0.dp else callGap + callBtnH
+        val availForRows = (maxHeight - fixedH).coerceAtLeast(0.dp)
+        val rowH      = minOf(idealRowH, (availForRows / numRows).coerceAtLeast(52.dp))
+
+        val digitFs  = (rowH.value * 0.42f).coerceIn(22f, 30f).sp  // digit numeral
+        val subFs    = (rowH.value * 0.145f).coerceIn(9f, 12f).sp   // sub-label letters
+
+        Column(
+            modifier            = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(topSpacer))
+
+            // ── Number display ────────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(displayH)
+                    .padding(horizontal = hPad)
+                    .combinedClickable(
+                        onClick     = {},
+                        onLongClick = {
+                            val clip = clipboard.primaryClip
+                            if (clip != null && clip.itemCount > 0) {
+                                val raw    = clip.getItemAt(0).coerceToText(context)?.toString().orEmpty()
+                                val pasted = normalizePastedDialText(raw)
+                                if (pasted.isNotEmpty()) {
+                                    viewModel.setQueryDirect(state.query + pasted)
+                                    Toast.makeText(context, "Pasted", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Nothing to paste", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                Toast.makeText(context, "Nothing to paste", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+            ) {
+                Column(
+                    modifier            = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (hasInput) {
+                        Text(
+                            text     = state.query,
+                            color    = TextPrimary,
+                            style    = TextStyle(
+                                fontSize      = 30.sp,
+                                fontWeight    = FontWeight.W300,
+                                lineHeight    = 32.sp,
+                                textAlign     = TextAlign.Center,
+                                letterSpacing = 1.sp
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (matched != null && hasInput) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text     = matched.name,
+                            color    = TextSecondary,
+                            style    = TextStyle(
+                                fontSize   = 12.5.sp,
+                                lineHeight = 14.sp,
+                                textAlign  = TextAlign.Center
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                if (hasInput) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                viewModel.deleteChar()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector        = Icons.AutoMirrored.Filled.Backspace,
+                            contentDescription = "Delete",
+                            tint               = TextSecondary,
+                            modifier           = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(g))
+
+            // ── Key grid ──────────────────────────────────────────────────────
+            Column(
+                modifier            = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = hPad),
+                verticalArrangement = Arrangement.spacedBy(g)
+            ) {
+                dialpadKeys.forEach { rowKeys ->
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(g)
+                    ) {
+                        rowKeys.forEach { digit ->
+                            PixelDialpadKeyPill(
+                                digit    = digit,
+                                keyBg    = keyBg,
+                                keyText  = keyText,
+                                subText  = subText,
+                                isLight  = isLight,
+                                digitFs  = digitFs,
+                                subFs    = subFs,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(rowH),
+                                onClick  = { viewModel.typeUnicode(digit.code) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Call pill (hidden during active call) ─────────────────────────
+            if (!duringCall) {
+                Spacer(Modifier.height(callGap))
+                Box(
+                    modifier = Modifier
+                        .width(gridW * 0.52f)
+                        .height(callBtnH)
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            if (canCall) Color(0xFF1EA446)
+                            else Color(0xFF1EA446).copy(alpha = if (isLight) 0.55f else 0.32f)
+                        )
+                        .clickable(enabled = canCall) {
+                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            viewModel.callSelected()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.Phone,
+                        contentDescription = "Call",
+                        tint               = Color.White,
+                        modifier           = Modifier.size(26.dp)
+                    )
+                }
+                Spacer(Modifier.height(bottomSpacer))
+            }
+        }
+    }
+}
 
 @Composable
-private fun BottomNavBar(current: DialerTab, showCallsBadge: Boolean, onSelect: (DialerTab) -> Unit) {
+private fun PixelDialpadKeyPill(
+    digit:   Char,
+    keyBg:   Color,
+    keyText: Color,
+    subText: Color,
+    isLight: Boolean,
+    digitFs: TextUnit,
+    subFs:   TextUnit,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    val view  = LocalView.current
+    val shape = RoundedCornerShape(50)
+    // * and # have no sub-label — center the digit perfectly
+    val hasSubLabel = digit != '*' && digit != '#'
+
+    Box(
+        modifier         = modifier
+            .shadow(if (isLight) 1.5.dp else 0.dp, shape, clip = false)
+            .clip(shape)
+            .background(keyBg)
+            .clickable {
+                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                onClick()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        if (hasSubLabel) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text       = digit.toString(),
+                    color      = keyText,
+                    fontSize   = digitFs,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = (digitFs.value * 1.05f).sp
+                )
+                when {
+                    digit == '1' -> {
+                        Spacer(Modifier.height(3.dp))
+                        Row(
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.5.dp)
+                        ) {
+                            Box(Modifier.size(5.5.dp).background(subText, CircleShape))
+                            Box(Modifier.size(11.dp, 1.5.dp).background(subText))
+                            Box(Modifier.size(5.5.dp).background(subText, CircleShape))
+                        }
+                    }
+                    digit == '0' -> {
+                        Text(
+                            text       = "+",
+                            color      = subText,
+                            fontSize   = subFs,
+                            lineHeight = (subFs.value * 1.1f).sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    else -> {
+                        val letters = dialpadLetters[digit]
+                        if (letters != null) {
+                            Text(
+                                text          = letters,
+                                color         = subText,
+                                fontSize      = subFs,
+                                lineHeight    = (subFs.value * 1.1f).sp,
+                                fontWeight    = FontWeight.Medium,
+                                letterSpacing = 0.6.sp
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            // * and # — digit only, perfectly centered
+            Text(
+                text       = digit.toString(),
+                color      = keyText,
+                fontSize   = digitFs,
+                fontWeight = FontWeight.Normal,
+                lineHeight = (digitFs.value * 1.05f).sp
+            )
+        }
+    }
+}
+
+// ── Bottom nav bar ───────────────────────────────────────────────────────────
+
+private val pixelNavTabs = listOf(
+    Triple(DialerTab.FAVORITES, "Favorites", Icons.Default.Favorite),
+    Triple(DialerTab.HOME,      "Home",      Icons.Default.Home),
+    Triple(DialerTab.KEYPAD,    "Keypad",    Icons.Default.Dialpad),
+)
+
+@Composable
+private fun BottomNavBar(current: DialerTab, showCallsBadge: Boolean, isPixel: Boolean, onSelect: (DialerTab) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(BgPage)
-            // Prevent bottom bar from being clipped by system nav/gesture area.
+            .background(if (isPixel) BgSurface else BgPage)
             .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         Box(
@@ -1701,21 +2026,82 @@ private fun BottomNavBar(current: DialerTab, showCallsBadge: Boolean, onSelect: 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                // Prototype nav is 48px; insets handled by windowInsetsPadding above.
                 .height(70.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            DialerTab.entries.forEach { tab ->
-                NavItem(
-                    iconRes = tab.iconRes,
-                    label = tab.label,
-                    selected = current == tab,
-                    showBadge = IsModernClassic && showCallsBadge && tab == DialerTab.CALLS,
-                    onClick = { onSelect(tab) },
-                    modifier = Modifier.weight(1f)
-                )
+            if (isPixel) {
+                pixelNavTabs.forEach { (tab, label, icon) ->
+                    PixelNavItem(
+                        icon     = icon,
+                        label    = label,
+                        selected = current == tab,
+                        onClick  = { onSelect(tab) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            } else {
+                listOf(DialerTab.CALLS, DialerTab.CONTACTS, DialerTab.KEYPAD).forEach { tab ->
+                    NavItem(
+                        iconRes   = tab.iconRes,
+                        label     = tab.label,
+                        selected  = current == tab,
+                        showBadge = IsModernClassic && showCallsBadge && tab == DialerTab.CALLS,
+                        onClick   = { onSelect(tab) },
+                        modifier  = Modifier.weight(1f)
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun PixelNavItem(
+    icon:     ImageVector,
+    label:    String,
+    selected: Boolean,
+    onClick:  () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val iconColor  = if (selected) TextPrimary else TextSecondary
+    val textColor  = if (selected) TextPrimary else TextSecondary
+
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector        = icon,
+            contentDescription = label,
+            tint               = iconColor,
+            modifier           = Modifier.size(22.dp)
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            text       = label,
+            color      = textColor,
+            fontSize   = 10.sp,
+            lineHeight = 10.sp,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            maxLines   = 1
+        )
+        if (selected) {
+            Spacer(Modifier.height(2.dp))
+            Box(
+                modifier = Modifier
+                    .width(24.dp)
+                    .height(2.dp)
+                    .background(Accent, RoundedCornerShape(1.dp))
+            )
+        } else {
+            Spacer(Modifier.height(4.dp))
         }
     }
 }
@@ -1936,44 +2322,56 @@ private fun ReturnToCallBanner(info: ActiveCallInfo, onClick: () -> Unit, onEndC
             .fillMaxWidth()
             .background(SurfaceActive)
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
             verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier              = Modifier.weight(1f)
         ) {
-            Icon(
-                imageVector        = Icons.Default.Phone,
-                contentDescription = null,
-                tint               = Accent,
-                modifier           = Modifier.size(18.dp)
-            )
-            Column {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Accent.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.Phone,
+                    contentDescription = null,
+                    tint               = Accent,
+                    modifier           = Modifier.size(18.dp)
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
                     text       = info.displayName,
                     color      = TextPrimary,
-                    fontSize   = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontSize   = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines   = 1,
                     overflow   = TextOverflow.Ellipsis
                 )
-                Text(text = stateText, color = Accent, fontSize = 14.sp)
+                Text(text = stateText, color = Accent, fontSize = 13.sp)
             }
         }
-        Text(
-            text       = "End Call",
-            color      = Color(0xFFC0392B),
-            fontSize   = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier   = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFFFE8E8))
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(Danger.copy(alpha = 0.15f))
                 .clickable { onEndCall() }
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        )
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text       = "End Call",
+                color      = Danger,
+                fontSize   = 14.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
 
@@ -2068,24 +2466,35 @@ private fun PhoneMenuDrawer(onDismiss: () -> Unit, viewModel: DialerViewModel) {
 
 @Composable
 private fun DrawerMenuItem(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    var isFocused by remember { mutableStateOf(false) }
+    val isHighlighted = isPressed || isFocused
     Row(
         modifier          = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .onFocusChanged { isFocused = it.isFocused }
+            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
+            .background(if (isHighlighted) SurfaceActive else Color.Transparent)
             .padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        if (isHighlighted) {
+            Box(modifier = Modifier.width(3.dp).height(24.dp).background(Accent))
+            Spacer(Modifier.width(0.dp))
+        }
         Icon(
             imageVector        = icon,
             contentDescription = label,
-            tint               = TextSecondary,
+            tint               = if (isHighlighted) Accent else TextSecondary,
             modifier           = Modifier.size(24.dp)
         )
         Text(
-            text  = label,
-            color = TextPrimary,
-            style = MaterialTheme.typography.bodyLarge
+            text       = label,
+            color      = if (isHighlighted) Accent else TextPrimary,
+            fontWeight = if (isHighlighted) FontWeight.SemiBold else FontWeight.Normal,
+            style      = MaterialTheme.typography.bodyLarge
         )
     }
 }
@@ -2130,6 +2539,350 @@ private fun FavoritesRow(
                     textAlign = TextAlign.Center,
                     lineHeight = 17.sp
                 )
+            }
+        }
+    }
+}
+
+// ── Pixel: HOME tab ──────────────────────────────────────────────────────────
+
+@Composable
+private fun PixelHomeContent(
+    state: DialerUiState,
+    viewModel: DialerViewModel,
+    onMenuOpen: () -> Unit,
+    onEditNumber: (String) -> Unit
+) {
+    val voiceLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val text = result.data
+                ?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!text.isNullOrBlank()) viewModel.setQueryDirect(text)
+        }
+    }
+    val context = LocalContext.current
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Spacer(Modifier.height(12.dp))
+
+        PixelSearchBar(
+            displayQuery  = state.displayQuery,
+            onMenuClick   = onMenuOpen,
+            onVoiceSearch = {
+                voiceLauncher.launch(
+                    Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                 android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                        putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Search contacts…")
+                    }
+                )
+            },
+            onContactsOpen = {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW).apply {
+                        data = android.provider.ContactsContract.Contacts.CONTENT_URI
+                    }
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        FilterChipRow(current = state.filterMode, onSelect = { viewModel.setFilter(it) })
+
+        Spacer(Modifier.height(4.dp))
+
+        ResultsList(
+            results          = state.results,
+            selectedIndex    = state.selectedIndex,
+            modifier         = Modifier.weight(1f).fillMaxWidth(),
+            onTap            = { i ->
+                viewModel.selectItem(i)
+                // Pixel: single tap expands the action panel (Call / Message / History)
+                viewModel.toggleExpandIndex(i)
+            },
+            onDoubleTap      = { i -> viewModel.selectItem(i); viewModel.callItem(i) },
+            onCallNumber     = { number -> viewModel.callNumber(number) },
+            onEditNumber     = onEditNumber,
+            onAddFavorite    = { contact -> viewModel.pinFavorite(contact) },
+            onToggleBlocked  = { contact -> viewModel.toggleBlockedContact(contact) },
+            isBlocked        = { contact -> contact.number.filter { it.isDigit() } in state.blockedNumbers },
+            onDelete         = { number -> viewModel.deleteCallLogForNumber(number) },
+            toggleExpandFlow = viewModel.toggleExpandEvent,
+            onScrollFocusIndexChanged = { i -> viewModel.setScrollFocusedIndex(i) },
+        )
+    }
+}
+
+// ── Pixel: FAVORITES tab ─────────────────────────────────────────────────────
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PixelFavoritesContent(
+    state: DialerUiState,
+    viewModel: DialerViewModel,
+    onMenuOpen: () -> Unit
+) {
+    val listState   = rememberLazyListState()
+    val suggestions = state.favoriteSuggestions
+    val selIdx      = state.favoriteFocusIndex
+
+    LaunchedEffect(selIdx, suggestions.size) {
+        if (suggestions.isEmpty()) return@LaunchedEffect
+        val flatPos = 3 + selIdx.coerceIn(0, suggestions.lastIndex)
+        val visible = listState.layoutInfo.visibleItemsInfo
+        if (visible.isEmpty()) {
+            listState.scrollToItem(flatPos)
+            return@LaunchedEffect
+        }
+        val first = visible.first().index
+        val last  = visible.last().index
+        when {
+            flatPos < first -> listState.animateScrollToItem(flatPos)
+            flatPos > last  -> listState.animateScrollToItem((flatPos - 1).coerceAtLeast(0))
+        }
+    }
+
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize().background(BgPage)) {
+
+        item {
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .clickable { onMenuOpen() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextSecondary)
+                }
+                Text("Favorites", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.width(44.dp))
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text     = "Pinned",
+                color    = TextSecondary,
+                style    = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            if (state.pinnedFavorites.isEmpty()) {
+                Text(
+                    text     = "Long-press any contact below to pin them here",
+                    color    = TextHint,
+                    style    = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            } else {
+                FavoritesRow(
+                    favorites   = state.pinnedFavorites,
+                    onTap       = { c -> viewModel.callNumber(c.number) },
+                    onLongPress = { c -> viewModel.unpinFavorite(c.number) }
+                )
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text     = "Suggestions",
+                color    = TextSecondary,
+                style    = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+
+        if (suggestions.isEmpty()) {
+            item {
+                Text(
+                    text     = "No suggestions yet",
+                    color    = TextHint,
+                    style    = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        } else {
+            itemsIndexed(suggestions, key = { _, c -> c.number }) { idx, contact ->
+                PixelSuggestionRow(
+                    contact  = contact,
+                    selected = idx == selIdx,
+                    isPinned = state.pinnedFavorites.any { it.number == contact.number },
+                    onCall   = { viewModel.callNumber(contact.number) },
+                    onPin    = { viewModel.pinFavorite(contact) },
+                    onUnpin  = { viewModel.unpinFavorite(contact.number) }
+                )
+            }
+        }
+
+        item { Spacer(Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun PixelSuggestionRow(
+    contact:  Contact,
+    selected: Boolean,
+    isPinned: Boolean,
+    onCall:   () -> Unit,
+    onPin:    () -> Unit,
+    onUnpin:  () -> Unit
+) {
+    val rowBg         = if (selected) SurfaceActive else Color.Transparent
+    val nameColor     = if (selected) Accent else TextPrimary
+    val secondaryColor= if (selected) AccentMuted else TextSecondary
+    val pinTint       = when {
+        isPinned -> Accent
+        selected -> AccentMuted
+        else     -> TextSecondary
+    }
+
+    Row(
+        modifier          = Modifier.fillMaxWidth().background(rowBg),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(50.dp)
+                    .background(Accent)
+            )
+        }
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .padding(
+                    start  = if (selected) 10.dp else 12.dp,
+                    end    = 8.dp,
+                    top    = 8.dp,
+                    bottom = 8.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ContactAvatar(name = contact.name, photoUri = contact.photoUri, size = 44)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text     = contact.name,
+                    color    = nameColor,
+                    style    = contactListPrimaryTextStyle(selected),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(1.dp))
+                Text(
+                    text     = contact.number,
+                    color    = secondaryColor,
+                    style    = contactListSecondaryTextStyle(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(BgElevated)
+                    .clickable { if (isPinned) onUnpin() else onPin() }
+                    .border(1.dp, Border, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.Favorite,
+                    contentDescription = if (isPinned) "Unpin" else "Pin",
+                    tint               = pinTint,
+                    modifier           = Modifier.size(15.dp)
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(BgElevated)
+                    .clickable { onCall() }
+                    .border(1.dp, Border, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.Phone,
+                    contentDescription = "Call",
+                    tint               = Accent,
+                    modifier           = Modifier.size(15.dp)
+                )
+            }
+        }
+    }
+}
+
+// ── Pixel: search bar ────────────────────────────────────────────────────────
+
+@Composable
+private fun PixelSearchBar(
+    displayQuery:   String,
+    onMenuClick:    () -> Unit,
+    onVoiceSearch:  () -> Unit,
+    onContactsOpen: () -> Unit = {},
+    modifier:       Modifier = Modifier
+) {
+    Box(
+        modifier         = modifier
+            .height(50.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(BgElevated)
+            .border(1.dp, Border, RoundedCornerShape(20.dp)),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier          = Modifier.fillMaxSize().padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier         = Modifier.size(44.dp).clip(CircleShape).clickable { onMenuClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextSecondary, modifier = Modifier.size(20.dp))
+            }
+
+            Text(
+                text     = if (displayQuery.isEmpty()) "Search contacts" else displayQuery,
+                color    = if (displayQuery.isEmpty()) TextSecondary else TextPrimary,
+                style    = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+
+            Box(
+                modifier         = Modifier.size(44.dp).clip(CircleShape).clickable { onVoiceSearch() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Mic, contentDescription = "Voice search", tint = TextSecondary, modifier = Modifier.size(20.dp))
+            }
+
+            Box(
+                modifier         = Modifier.size(44.dp).clip(CircleShape).clickable { onContactsOpen() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Contacts, contentDescription = "Contacts", tint = TextSecondary, modifier = Modifier.size(20.dp))
             }
         }
     }
