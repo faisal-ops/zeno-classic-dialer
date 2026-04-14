@@ -54,3 +54,6 @@ BB_CLASSIC_IMPL_PLAN.md
 
 # Optional: root-level HTML prototypes (if re-added locally)
 bb_classic*.html
+
+# Local analysis outputs
+graphify-out/

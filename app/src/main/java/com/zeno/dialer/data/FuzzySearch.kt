@@ -12,10 +12,12 @@ package com.zeno.dialer.data
  *    82 – partial phone match (query is prefix of digits and ≥4 chars)
  *    80 – any word in target starts with query
  *    70 – target contains query as substring
- *    40 – query chars appear in order in target ("jhn" → "John")
+ *    40 – query chars appear in order in target ("jhn" → "John"), only for longer queries
  *     0 – no match
  */
 object FuzzySearch {
+    private const val MIN_QUERY_LEN_FOR_SEQUENCE_FALLBACK = 5
+    private const val MIN_QUERY_LEN_FOR_CONTAINS_FALLBACK = 5
 
     /**
      * Pre-indexed contact for O(1) field access during scoring.
@@ -84,8 +86,10 @@ object FuzzySearch {
             t == queryLower -> 100
             t.startsWith(queryLower) -> 90
             ic.words.any { it.startsWith(queryLower) } -> 80
-            t.contains(queryLower) -> 70
-            charSequenceMatch(queryLower, t) -> 40
+            queryLower.length >= MIN_QUERY_LEN_FOR_CONTAINS_FALLBACK &&
+                t.contains(queryLower) -> 70
+            queryLower.length >= MIN_QUERY_LEN_FOR_SEQUENCE_FALLBACK &&
+                charSequenceMatch(queryLower, t) -> 40
             else -> 0
         }
     }
@@ -107,8 +111,10 @@ object FuzzySearch {
             t == q -> 100
             t.startsWith(q) -> 90
             wordStartsWith(t, q) -> 80
-            t.contains(q) -> 70
-            charSequenceMatch(q, t) -> 40
+            q.length >= MIN_QUERY_LEN_FOR_CONTAINS_FALLBACK &&
+                t.contains(q) -> 70
+            q.length >= MIN_QUERY_LEN_FOR_SEQUENCE_FALLBACK &&
+                charSequenceMatch(q, t) -> 40
             else -> 0
         }
     }

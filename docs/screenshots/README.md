@@ -1,6 +1,7 @@
 # Screenshots
 
 Images in this folder are used in the root [README.md](../../README.md).
+Keep screenshots under this directory; root-level screenshot files are not referenced.
 
 | File | Description |
 |------|-------------|

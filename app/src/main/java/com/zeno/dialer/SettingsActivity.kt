@@ -74,6 +74,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zeno.dialer.ui.Accent
@@ -85,7 +86,9 @@ import com.zeno.dialer.ui.TextHint
 import com.zeno.dialer.ui.TextPrimary
 import com.zeno.dialer.ui.TextSecondary
 import com.zeno.dialer.ui.AccentGreen
+import com.zeno.dialer.ui.theme.DialerStyle
 import com.zeno.dialer.ui.theme.DialerTheme
+import com.zeno.dialer.ui.theme.LocalDialerStyle
 import com.zeno.dialer.AppPreferences
 import com.zeno.dialer.R
 
@@ -121,6 +124,9 @@ private val DEFAULT_QUICK_RESPONSES = listOf(
     "I'll call you later.",
     "Can't talk now. Call me later?"
 )
+
+private val SettingsTileTitleSize = 16.sp
+private val SettingsTileSecondarySize = 13.sp
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 
@@ -255,7 +261,7 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
                             })
                     })
             }
-            item { Spacer(Modifier.height(24.dp)) }
+            item { Spacer(Modifier.height(12.dp)) }
         }
     }
 }
@@ -280,7 +286,7 @@ private fun CallsScreen(onBack: () -> Unit) {
                     onClick        = { showClearDialog = true }
                 )
             }
-            item { Spacer(Modifier.height(24.dp)) }
+            item { Spacer(Modifier.height(12.dp)) }
         }
     }
 
@@ -358,13 +364,13 @@ private fun AssistedDialingScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("Default home country", color = TextPrimary, fontSize = 19.sp)
+                Text("Default home country", color = TextPrimary, fontSize = SettingsTileTitleSize)
                 Spacer(Modifier.height(4.dp))
-                Text("Automatically detected", color = TextSecondary, fontSize = 16.sp)
+                Text("Automatically detected", color = TextSecondary, fontSize = SettingsTileSecondarySize)
             }
         }
 
@@ -410,7 +416,7 @@ private fun QuickResponsesScreen(onBack: () -> Unit) {
                 cursorBrush = SolidColor(AccentGreen),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
             )
 
             if (index < responses.lastIndex) {
@@ -492,10 +498,10 @@ private fun CallerIdAnnouncementScreen(onBack: () -> Unit) {
         SettingsTopBar(title = "Caller ID announcement", onBack = onBack)
         Spacer(Modifier.height(16.dp))
 
-        Text("Announce caller ID", color = TextPrimary, fontSize = 19.sp,
+        Text("Announce caller ID", color = TextPrimary, fontSize = SettingsTileTitleSize,
             modifier = Modifier.padding(horizontal = 20.dp))
         Spacer(Modifier.height(4.dp))
-        Text(options[selected], color = TextSecondary, fontSize = 16.sp,
+        Text(options[selected], color = TextSecondary, fontSize = SettingsTileSecondarySize,
             modifier = Modifier.padding(horizontal = 20.dp))
 
         Spacer(Modifier.height(12.dp))
@@ -507,7 +513,7 @@ private fun CallerIdAnnouncementScreen(onBack: () -> Unit) {
                         selected = index
                         prefs.edit().putInt(AppPreferences.KEY_CALLER_ID_ANNOUNCE, index).apply()
                     }
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
@@ -519,7 +525,7 @@ private fun CallerIdAnnouncementScreen(onBack: () -> Unit) {
                     colors = RadioButtonDefaults.colors(selectedColor = AccentGreen, unselectedColor = TextSecondary)
                 )
                 Spacer(Modifier.width(12.dp))
-                Text(label, color = if (selected == index) TextPrimary else TextSecondary, fontSize = 17.sp)
+                Text(label, color = if (selected == index) TextPrimary else TextSecondary, fontSize = SettingsTileTitleSize)
             }
         }
 
@@ -548,10 +554,10 @@ private fun VoicemailScreen(onBack: () -> Unit) {
                         putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                     })
                 }
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Notifications", color = TextPrimary, fontSize = 19.sp, modifier = Modifier.weight(1f))
+            Text("Notifications", color = TextPrimary, fontSize = SettingsTileTitleSize, modifier = Modifier.weight(1f))
             Icon(Icons.Default.ChevronRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
         }
 
@@ -570,10 +576,10 @@ private fun VoicemailScreen(onBack: () -> Unit) {
         Row(
             modifier = Modifier.fillMaxWidth()
                 .clickable { launchSafe(context, Intent("android.settings.CALL_SETTINGS")) }
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Advanced Settings", color = TextPrimary, fontSize = 19.sp, modifier = Modifier.weight(1f))
+            Text("Advanced Settings", color = TextPrimary, fontSize = SettingsTileTitleSize, modifier = Modifier.weight(1f))
             Icon(Icons.Default.ChevronRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
         }
     }
@@ -710,13 +716,19 @@ private fun SettingsTopBar(title: String, onBack: () -> Unit) {
 
 @Composable
 private fun SectionHeader(title: String) {
+    val spacing = rememberSettingsListSpacing()
     Text(
         text = title.uppercase(),
         color = AccentGreen,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.2.sp,
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp)
+        modifier = Modifier.padding(
+            start = 20.dp,
+            end = 20.dp,
+            top = spacing.sectionHeaderTop,
+            bottom = spacing.sectionHeaderBottom
+        )
     )
 }
 
@@ -736,6 +748,7 @@ private fun SettingsNavItem(
     showDividerBelow: Boolean = true,
     onClick: () -> Unit
 ) {
+    val spacing = rememberSettingsListSpacing()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     var isFocused by remember { mutableStateOf(false) }
@@ -748,20 +761,20 @@ private fun SettingsNavItem(
                 .onFocusChanged { isFocused = it.isFocused }
                 .clickable(interactionSource = interactionSource, indication = null) { onClick() }
                 .background(if (highlighted) SurfaceActive else Color.Transparent)
-                .padding(vertical = 14.dp),
+                .padding(vertical = spacing.navRowVertical),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Blue focus bar (same style as call log rows)
             Box(
                 modifier = Modifier
                     .width(3.dp)
-                    .height(40.dp)
+                    .height(spacing.focusBarHeight)
                     .background(if (highlighted) Accent else Color.Transparent)
             )
             Spacer(Modifier.width(17.dp))
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(spacing.iconContainerSize)
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (highlighted) Accent.copy(alpha = 0.15f) else BgElevated),
                 contentAlignment = Alignment.Center
@@ -773,12 +786,12 @@ private fun SettingsNavItem(
                 Text(
                     title,
                     color = if (highlighted) Accent else TextPrimary,
-                    fontSize = 16.sp,
+                    fontSize = SettingsTileTitleSize,
                     fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Normal
                 )
                 if (subtitle != null) {
                     Spacer(Modifier.height(2.dp))
-                    Text(subtitle, color = TextSecondary, fontSize = 13.sp)
+                    Text(subtitle, color = TextSecondary, fontSize = SettingsTileSecondarySize)
                 }
             }
             Icon(
@@ -794,6 +807,47 @@ private fun SettingsNavItem(
     }
 }
 
+private data class SettingsListSpacing(
+    val sectionHeaderTop: Dp,
+    val sectionHeaderBottom: Dp,
+    val navRowVertical: Dp,
+    val focusBarHeight: Dp,
+    val iconContainerSize: Dp,
+    val toggleRowVertical: Dp,
+    val pickerRowVertical: Dp,
+    val compactFocusBarHeight: Dp,
+    val cardRowVertical: Dp
+)
+
+@Composable
+private fun rememberSettingsListSpacing(): SettingsListSpacing {
+    return when (LocalDialerStyle.current) {
+        DialerStyle.PIXEL -> SettingsListSpacing(
+            sectionHeaderTop = 12.dp,
+            sectionHeaderBottom = 3.dp,
+            navRowVertical = 8.dp,
+            focusBarHeight = 30.dp,
+            iconContainerSize = 32.dp,
+            toggleRowVertical = 8.dp,
+            pickerRowVertical = 8.dp,
+            compactFocusBarHeight = 30.dp,
+            cardRowVertical = 12.dp
+        )
+        DialerStyle.ORIGINAL_CLASSIC,
+        DialerStyle.MODERN_CLASSIC -> SettingsListSpacing(
+            sectionHeaderTop = 12.dp,
+            sectionHeaderBottom = 3.dp,
+            navRowVertical = 8.dp,
+            focusBarHeight = 30.dp,
+            iconContainerSize = 32.dp,
+            toggleRowVertical = 8.dp,
+            pickerRowVertical = 8.dp,
+            compactFocusBarHeight = 30.dp,
+            cardRowVertical = 12.dp
+        )
+    }
+}
+
 @Composable
 private fun ToggleRow(
     title: String,
@@ -802,6 +856,7 @@ private fun ToggleRow(
     showDividerBelow: Boolean = false,
     onToggle: (Boolean) -> Unit
 ) {
+    val spacing = rememberSettingsListSpacing()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     var isFocused by remember { mutableStateOf(false) }
@@ -813,22 +868,22 @@ private fun ToggleRow(
                 .onFocusChanged { isFocused = it.isFocused }
                 .clickable(interactionSource = interactionSource, indication = null) { onToggle(!checked) }
                 .background(if (highlighted) SurfaceActive else Color.Transparent)
-                .padding(vertical = 12.dp),
+                .padding(vertical = spacing.toggleRowVertical),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .width(3.dp)
-                    .height(36.dp)
+                    .height(spacing.compactFocusBarHeight)
                     .background(if (highlighted) Accent else Color.Transparent)
             )
             Spacer(Modifier.width(17.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = if (highlighted) Accent else TextPrimary, fontSize = 18.sp,
+                Text(title, color = if (highlighted) Accent else TextPrimary, fontSize = SettingsTileTitleSize,
                     fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Normal)
                 if (subtitle != null) {
                     Spacer(Modifier.height(4.dp))
-                    Text(subtitle, color = TextSecondary, fontSize = 15.sp)
+                    Text(subtitle, color = TextSecondary, fontSize = SettingsTileSecondarySize)
                 }
             }
             Spacer(Modifier.width(12.dp))
@@ -864,11 +919,12 @@ private fun InfoRow(text: String) {
 
 @Composable
 private fun CardRow(text: String, buttonLabel: String, onClick: () -> Unit) {
+    val spacing = rememberSettingsListSpacing()
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
             .clip(RoundedCornerShape(12.dp)).background(BgElevated)
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = spacing.cardRowVertical),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text, color = TextSecondary, fontSize = 17.sp, modifier = Modifier.weight(1f))
@@ -893,6 +949,7 @@ private fun PickerRow(
     title: String, currentValue: String, options: List<String>,
     selectedIndex: Int, onSelect: (Int) -> Unit
 ) {
+    val spacing = rememberSettingsListSpacing()
     var expanded by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -905,21 +962,21 @@ private fun PickerRow(
                 .onFocusChanged { isFocused = it.isFocused }
                 .clickable(interactionSource = interactionSource, indication = null) { expanded = !expanded }
                 .background(if (highlighted) SurfaceActive else Color.Transparent)
-                .padding(vertical = 12.dp),
+                .padding(vertical = spacing.pickerRowVertical),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .width(3.dp)
-                    .height(40.dp)
+                    .height(spacing.compactFocusBarHeight)
                     .background(if (highlighted) Accent else Color.Transparent)
             )
             Spacer(Modifier.width(17.dp))
             Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                Text(title, color = if (highlighted) Accent else TextPrimary, fontSize = 19.sp,
+                Text(title, color = if (highlighted) Accent else TextPrimary, fontSize = SettingsTileTitleSize,
                     fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Normal)
                 Spacer(Modifier.height(4.dp))
-                Text(currentValue, color = TextSecondary, fontSize = 16.sp)
+                Text(currentValue, color = TextSecondary, fontSize = SettingsTileSecondarySize)
             }
         }
 
@@ -928,7 +985,7 @@ private fun PickerRow(
                 Row(
                     modifier = Modifier.fillMaxWidth()
                         .clickable { onSelect(index); expanded = false }
-                        .padding(horizontal = 32.dp, vertical = 10.dp),
+                        .padding(horizontal = 32.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
@@ -940,7 +997,7 @@ private fun PickerRow(
                     Text(
                         label,
                         color = if (selectedIndex == index) TextPrimary else TextSecondary,
-                        fontSize = 17.sp
+                        fontSize = SettingsTileTitleSize
                     )
                 }
             }

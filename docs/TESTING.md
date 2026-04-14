@@ -26,3 +26,7 @@ Run these on a **physical device** with the app set as **default dialer** where 
 ## Release note
 
 Installing a build with a new **`applicationId`** (`com.zeno.zenoclassicdialer`) installs **alongside** older `com.zeno.bbclassicdialer` builds; uninstall the old package if you only want one icon.
+
+Current signed release artifact naming uses the versioned file pattern:
+
+- `app/build/outputs/apk/release/zeno-classic-dialer-v2.0.1.apk`
