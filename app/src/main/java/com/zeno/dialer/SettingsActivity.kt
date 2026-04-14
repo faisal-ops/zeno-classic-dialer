@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MusicNote
@@ -44,6 +45,8 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Voicemail
+import android.provider.CallLog
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
@@ -52,6 +55,7 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -121,7 +125,7 @@ private val DEFAULT_QUICK_RESPONSES = listOf(
 // ── Navigation ───────────────────────────────────────────────────────────────
 
 private enum class SettingsPage {
-    MAIN, FLIP_TO_SILENCE, CALLER_ID_ANNOUNCEMENT, VOICEMAIL, CONTACT_RINGTONES,
+    MAIN, CALLS, FLIP_TO_SILENCE, CALLER_ID_ANNOUNCEMENT, VOICEMAIL, CONTACT_RINGTONES,
     CALLING_CARD, QUICK_RESPONSES, DISPLAY_OPTIONS, CALLER_ID_SPAM, ASSISTED_DIALING
 }
 
@@ -140,7 +144,8 @@ private fun SettingsRoot(onBack: () -> Unit) {
     }
 
     when (currentPage) {
-        SettingsPage.MAIN -> SettingsScreen(onBack = onBack, onNavigate = { currentPage = it })
+        SettingsPage.MAIN  -> SettingsScreen(onBack = onBack, onNavigate = { currentPage = it })
+        SettingsPage.CALLS -> CallsScreen(onBack = goMain)
         SettingsPage.FLIP_TO_SILENCE -> FlipToSilenceScreen(onBack = goMain)
         SettingsPage.CALLER_ID_ANNOUNCEMENT -> CallerIdAnnouncementScreen(onBack = goMain)
         SettingsPage.VOICEMAIL -> VoicemailScreen(onBack = goMain)
@@ -198,7 +203,7 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
             }
             item {
                 SettingsNavItem(icon = Icons.Default.Call, title = "Calls",
-                    onClick = { launchSafe(context, Intent("android.settings.CALL_SETTINGS")) })
+                    onClick = { onNavigate(SettingsPage.CALLS) })
             }
             item {
                 SettingsNavItem(icon = Icons.Default.Settings, title = "Display options",
@@ -252,6 +257,51 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
             }
             item { Spacer(Modifier.height(24.dp)) }
         }
+    }
+}
+
+// ── Calls ─────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CallsScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    var showClearDialog by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
+        SettingsTopBar(title = "Calls", onBack = onBack)
+
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item { SectionHeader("Call history") }
+            item {
+                SettingsNavItem(
+                    icon           = Icons.Default.Delete,
+                    title          = "Clear call history",
+                    showDividerBelow = false,
+                    onClick        = { showClearDialog = true }
+                )
+            }
+            item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title   = { Text("Clear call history?") },
+            text    = { Text("All call log entries will be permanently deleted.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    try {
+                        context.contentResolver.delete(CallLog.Calls.CONTENT_URI, null, null)
+                    } catch (_: Exception) { }
+                    showClearDialog = false
+                    onBack()
+                }) { Text("Clear") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 

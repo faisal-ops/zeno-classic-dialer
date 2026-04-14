@@ -32,6 +32,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +51,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -242,7 +246,6 @@ fun DialerScreen(
     val hasMissedCalls = remember(state.results, tab) {
         tab == DialerTab.CALLS && state.results.any { it.isRecent && it.callType == android.provider.CallLog.Calls.MISSED_TYPE }
     }
-    var showMenu   by remember { mutableStateOf(false) }
     val context    = LocalContext.current
 
     SideEffect { viewModel.setKeypadActive(tab == DialerTab.KEYPAD) }
@@ -256,86 +259,56 @@ fun DialerScreen(
         Call.STATE_DISCONNECTED, Call.STATE_DISCONNECTING
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BgPage)
-        ) {
-            if (showCallBanner) {
-                ReturnToCallBanner(
-                    info = activeCall!!,
-                    onClick = {
-                        context.startActivity(
-                            Intent(context, InCallActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                            }
-                        )
-                    },
-                    onEndCall = { CallStateHolder.hangup() }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BgPage)
+    ) {
+        if (showCallBanner) {
+            ReturnToCallBanner(
+                info = activeCall!!,
+                onClick = {
+                    context.startActivity(
+                        Intent(context, InCallActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                        }
+                    )
+                },
+                onEndCall = { CallStateHolder.hangup() }
+            )
+        }
+
+        Crossfade(
+            targetState   = tab,
+            modifier      = Modifier.weight(1f),
+            animationSpec = tween(MotionStandardMs),
+            label         = "tab_transition"
+        ) { currentTab ->
+            when (currentTab) {
+                DialerTab.FAVORITES -> PixelFavoritesContent(state, viewModel)
+                DialerTab.HOME -> PixelHomeContent(
+                    state,
+                    viewModel,
+                    onEditNumber = { number ->
+                        viewModel.setQueryDirect(number)
+                        viewModel.setCurrentTab(tabToIndex(DialerTab.KEYPAD))
+                    }
                 )
+                DialerTab.CALLS    -> CallsContent(state, viewModel)
+                DialerTab.CONTACTS -> ContactsContent(
+                    state,
+                    viewModel,
+                    onOpenContact = onOpenContact,
+                    onEditNumber = { number ->
+                        viewModel.setQueryDirect(number)
+                        viewModel.setCurrentTab(tabToIndex(DialerTab.KEYPAD))
+                    }
+                )
+                DialerTab.KEYPAD -> KeypadContent(state, viewModel)
             }
-
-            Crossfade(
-                targetState   = tab,
-                modifier      = Modifier.weight(1f),
-                animationSpec = tween(MotionStandardMs),
-                label         = "tab_transition"
-            ) { currentTab ->
-                when (currentTab) {
-                    DialerTab.FAVORITES -> PixelFavoritesContent(state, viewModel, onMenuOpen = { showMenu = true })
-                    DialerTab.HOME -> PixelHomeContent(
-                        state,
-                        viewModel,
-                        onMenuOpen = { showMenu = true },
-                        onEditNumber = { number ->
-                            viewModel.setQueryDirect(number)
-                            viewModel.setCurrentTab(tabToIndex(DialerTab.KEYPAD))
-                        }
-                    )
-                    DialerTab.CALLS -> CallsContent(state, viewModel, onMenuOpen = { showMenu = true })
-                    DialerTab.CONTACTS   -> ContactsContent(
-                        state,
-                        viewModel,
-                        onMenuOpen = { showMenu = true },
-                        onOpenContact = onOpenContact,
-                        onEditNumber = { number ->
-                            viewModel.setQueryDirect(number)
-                            viewModel.setCurrentTab(tabToIndex(DialerTab.KEYPAD))
-                        }
-                    )
-                    DialerTab.KEYPAD -> KeypadContent(state, viewModel)
-                }
-            }
-
-            BottomNavBar(current = tab, showCallsBadge = hasMissedCalls, isPixel = isPixelTheme, onSelect = { viewModel.setCurrentTab(tabToIndex(it)) })
         }
 
-        // ── Scrim ────────────────────────────────────────────────────────────
-        AnimatedVisibility(
-            visible = showMenu,
-            enter   = fadeIn(tween(MotionStandardMs)),
-            exit    = fadeOut(tween(MotionStandardMs))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f))
-                    .clickable { showMenu = false }
-            )
-        }
-
-        // ── Drawer panel ─────────────────────────────────────────────────────
-        AnimatedVisibility(
-            visible = showMenu,
-            enter   = slideInHorizontally(tween(MotionStandardMs, easing = EaseInOutCubic)) { -it },
-            exit    = slideOutHorizontally(tween(MotionStandardMs, easing = EaseInOutCubic)) { -it }
-        ) {
-            PhoneMenuDrawer(
-                onDismiss = { showMenu = false },
-                viewModel = viewModel
-            )
-        }
+        BottomNavBar(current = tab, showCallsBadge = hasMissedCalls, isPixel = isPixelTheme, onSelect = { viewModel.setCurrentTab(tabToIndex(it)) })
     }
 }
 
@@ -437,7 +410,6 @@ private fun buildNonRecentNumberToResultIndex(results: List<Contact>): Map<Strin
 private fun ContactsContent(
     state: DialerUiState,
     viewModel: DialerViewModel,
-    onMenuOpen: () -> Unit,
     onOpenContact: (com.zeno.dialer.data.Contact) -> Unit,
     onEditNumber: (String) -> Unit
 ) {
@@ -791,7 +763,7 @@ private fun ContactsContent(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CallsContent(state: DialerUiState, viewModel: DialerViewModel, onMenuOpen: () -> Unit) {
+private fun CallsContent(state: DialerUiState, viewModel: DialerViewModel) {
     val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize()) {
         FavoriteTilesRow(
@@ -2264,129 +2236,7 @@ private fun ReturnToCallBanner(info: ActiveCallInfo, onClick: () -> Unit, onEndC
     }
 }
 
-// ── Phone menu drawer ────────────────────────────────────────────────────────
 
-@Composable
-private fun PhoneMenuDrawer(onDismiss: () -> Unit, viewModel: DialerViewModel) {
-    val context = LocalContext.current
-    var showClearDialog by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(0.78f)
-                .align(Alignment.CenterStart)
-                .background(BgPage)
-                .border(width = 1.dp, color = Border, shape = RoundedCornerShape(0.dp))
-                .clickable(enabled = false) { }
-        ) {
-            Spacer(Modifier.height(40.dp))
-
-            Text(
-                text     = "Phone",
-                color    = Accent,
-                style    = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            DrawerMenuItem(
-                icon  = Icons.Default.Contacts,
-                label = "Contacts"
-            ) {
-                context.startActivity(
-                    Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI)
-                )
-                onDismiss()
-            }
-
-            DrawerMenuItem(
-                icon  = Icons.Default.Settings,
-                label = "Settings"
-            ) {
-                context.startActivity(Intent(context, com.zeno.dialer.SettingsActivity::class.java))
-                onDismiss()
-            }
-
-            DrawerMenuItem(
-                icon  = Icons.Default.History,
-                label = "Clear call history"
-            ) {
-                showClearDialog = true
-            }
-
-            DrawerMenuItem(
-                icon  = Icons.AutoMirrored.Filled.Help,
-                label = "Help & feedback"
-            ) {
-                context.startActivity(
-                    Intent(Intent.ACTION_SENDTO).apply {
-                        data    = Uri.parse("mailto:")
-                        putExtra(Intent.EXTRA_EMAIL,   arrayOf("support@zeno.app"))
-                        putExtra(Intent.EXTRA_SUBJECT, "Zeno Classic Dialer — Feedback")
-                    }
-                )
-                onDismiss()
-            }
-        }
-    }
-
-    if (showClearDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDialog = false },
-            title   = { Text("Clear call history?") },
-            text    = { Text("All call log entries will be permanently deleted.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.clearCallHistory()
-                    showClearDialog = false
-                    onDismiss()
-                }) { Text("Clear") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
-}
-
-
-@Composable
-private fun DrawerMenuItem(icon: ImageVector, label: String, onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    var isFocused by remember { mutableStateOf(false) }
-    val isHighlighted = isPressed || isFocused
-    Row(
-        modifier          = Modifier
-            .fillMaxWidth()
-            .onFocusChanged { isFocused = it.isFocused }
-            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
-            .background(if (isHighlighted) SurfaceActive else Color.Transparent)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        if (isHighlighted) {
-            Box(modifier = Modifier.width(3.dp).height(24.dp).background(Accent))
-            Spacer(Modifier.width(0.dp))
-        }
-        Icon(
-            imageVector        = icon,
-            contentDescription = label,
-            tint               = if (isHighlighted) Accent else TextSecondary,
-            modifier           = Modifier.size(24.dp)
-        )
-        Text(
-            text       = label,
-            color      = if (isHighlighted) Accent else TextPrimary,
-            fontWeight = if (isHighlighted) FontWeight.SemiBold else FontWeight.Normal,
-            style      = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
 
 // ── Favorites row ────────────────────────────────────────────────────────────
 
@@ -2439,7 +2289,6 @@ private fun FavoritesRow(
 private fun PixelHomeContent(
     state: DialerUiState,
     viewModel: DialerViewModel,
-    onMenuOpen: () -> Unit,
     onEditNumber: (String) -> Unit
 ) {
     val voiceLauncher = rememberLauncherForActivityResult(
@@ -2459,7 +2308,7 @@ private fun PixelHomeContent(
 
         PixelSearchBar(
             displayQuery  = state.displayQuery,
-            onMenuClick   = onMenuOpen,
+            onSettingsClick = { context.startActivity(Intent(context, com.zeno.dialer.SettingsActivity::class.java)) },
             onVoiceSearch = {
                 voiceLauncher.launch(
                     Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -2518,7 +2367,6 @@ private fun PixelHomeContent(
 private fun PixelFavoritesContent(
     state: DialerUiState,
     viewModel: DialerViewModel,
-    onMenuOpen: () -> Unit
 ) {
     val listState   = rememberLazyListState()
     val suggestions = state.favoriteSuggestions
@@ -2549,14 +2397,15 @@ private fun PixelFavoritesContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
+                val ctx = LocalContext.current
                 Box(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .clickable { onMenuOpen() },
+                        .clickable { ctx.startActivity(Intent(ctx, com.zeno.dialer.SettingsActivity::class.java)) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextSecondary)
+                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary)
                 }
                 Text("Favorites", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.width(44.dp))
@@ -2727,11 +2576,11 @@ private fun PixelSuggestionRow(
 
 @Composable
 private fun PixelSearchBar(
-    displayQuery:   String,
-    onMenuClick:    () -> Unit,
-    onVoiceSearch:  () -> Unit,
-    onContactsOpen: () -> Unit = {},
-    modifier:       Modifier = Modifier
+    displayQuery:    String,
+    onSettingsClick: () -> Unit,
+    onVoiceSearch:   () -> Unit,
+    onContactsOpen:  () -> Unit = {},
+    modifier:        Modifier = Modifier
 ) {
     Box(
         modifier         = modifier
@@ -2746,10 +2595,10 @@ private fun PixelSearchBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier         = Modifier.size(44.dp).clip(CircleShape).clickable { onMenuClick() },
+                modifier         = Modifier.size(44.dp).clip(CircleShape).clickable { onSettingsClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary, modifier = Modifier.size(20.dp))
             }
 
             Text(

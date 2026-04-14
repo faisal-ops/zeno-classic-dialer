@@ -487,6 +487,7 @@ class MainActivity : ComponentActivity() {
             if (event.keyCode == KeyEvent.KEYCODE_CALL) {
                 Log.i("ZenoDialer", "dispatchKeyEvent KEYCODE_CALL")
             }
+
             // Key-repeat for DPAD_UP/DOWN is now intentionally allowed so holding the
             // key scrolls continuously. The allowDpadNavStep() throttle in KeyHandler
             // (80 ms) prevents runaway scrolling on fast auto-repeat.
