@@ -216,7 +216,7 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
                     onClick = { onNavigate(SettingsPage.DISPLAY_OPTIONS) })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.QuestionAnswer, title = "Quick responses",
+                SettingsNavItem(icon = Icons.Default.QuestionAnswer, title = "Quick reply templates",
                     onClick = { onNavigate(SettingsPage.QUICK_RESPONSES) })
             }
             item {
@@ -387,6 +387,9 @@ private fun AssistedDialingScreen(onBack: () -> Unit) {
 @Composable
 private fun QuickResponsesScreen(onBack: () -> Unit) {
     val prefs = rememberPrefs()
+    var instantSend by remember {
+        mutableStateOf(prefs.getBoolean(AppPreferences.KEY_QUICK_RESPONSE_INSTANT_SEND, false))
+    }
     val responses = remember {
         (0..3).map { i ->
             mutableStateOf(
@@ -397,8 +400,19 @@ private fun QuickResponsesScreen(onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Edit quick responses", onBack = onBack)
+        SettingsTopBar(title = "Quick reply templates", onBack = onBack)
         Spacer(Modifier.height(16.dp))
+
+        ToggleRow(
+            title = "Send quick responses instantly",
+            subtitle = "When off, opens your SMS app with text prefilled",
+            checked = instantSend,
+            showDividerBelow = true,
+            onToggle = {
+                instantSend = it
+                prefs.edit().putBoolean(AppPreferences.KEY_QUICK_RESPONSE_INSTANT_SEND, it).apply()
+            }
+        )
 
         responses.forEachIndexed { index, state ->
             var text by state

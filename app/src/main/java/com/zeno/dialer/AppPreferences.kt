@@ -21,6 +21,7 @@ object AppPreferences {
     const val KEY_SORT_BY = "sort_by"
     const val KEY_NAME_FORMAT = "name_format"
     const val KEY_QUICK_RESPONSE_PREFIX = "quick_response_"
+    const val KEY_QUICK_RESPONSE_INSTANT_SEND = "quick_response_instant_send"
     const val KEY_ASSISTED_DIALING = "assisted_dialing"
     const val KEY_CALLER_SPAM_ID = "see_caller_spam_id"
     const val KEY_FILTER_SPAM = "filter_spam_calls"

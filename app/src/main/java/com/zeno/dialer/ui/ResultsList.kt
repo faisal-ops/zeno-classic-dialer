@@ -9,6 +9,7 @@ import android.net.Uri
 import android.provider.CallLog
 import android.provider.ContactsContract
 import android.telephony.SmsManager
+import android.widget.Toast
 import com.zeno.dialer.AppPreferences
 import com.zeno.dialer.CallHistoryDetailActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -295,7 +297,8 @@ fun ResultsList(
 
     // Quick-response message state
     var quickMsgTarget by remember { mutableStateOf<Contact?>(null) }
-    val quickMsgSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // Keep quick-reply sheet compact; allow partial expansion on small screens.
+    val quickMsgSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val prefs = context.getSharedPreferences(AppPreferences.FILE_SETTINGS, Context.MODE_PRIVATE)
     val quickResponses = remember {
         (0..3).map { i ->
@@ -568,6 +571,32 @@ fun ResultsList(
     // ── Quick-response message sheet ─────────────────────────────────────────
     quickMsgTarget?.let { contact ->
         val isThemedMsgSheet = IsModernClassic || IsPixel
+        val sendInstantQuickResponses = remember {
+            prefs.getBoolean(AppPreferences.KEY_QUICK_RESPONSE_INSTANT_SEND, false)
+        }
+        fun openSmsComposer(prefill: String? = null) {
+            context.startActivity(
+                Intent(Intent.ACTION_SENDTO).apply {
+                    data = Uri.parse("smsto:${contact.number}")
+                    if (!prefill.isNullOrBlank()) putExtra("sms_body", prefill)
+                }
+            )
+        }
+        fun sendQuickResponseOrOpenComposer(msg: String) {
+            quickMsgTarget = null
+            if (!sendInstantQuickResponses) {
+                openSmsComposer(prefill = msg)
+                return
+            }
+            runCatching {
+                SmsManager.getDefault().sendTextMessage(contact.number, null, msg, null, null)
+            }.onSuccess {
+                Toast.makeText(context, "Message sent", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                // Permission/SMS provider failures should gracefully fall back to composer.
+                openSmsComposer(prefill = msg)
+            }
+        }
         ModalBottomSheet(
             onDismissRequest = { quickMsgTarget = null },
             sheetState       = quickMsgSheetState,
@@ -593,6 +622,8 @@ fun ResultsList(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(max = 520.dp)
+                    .verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
             ) {
                 // Header
@@ -623,20 +654,19 @@ fun ResultsList(
 
                 HorizontalDivider(color = Border)
 
+                Text(
+                    text = "Quick reply templates",
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
+
                 // Quick responses
                 quickResponses.forEach { msg ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                quickMsgTarget = null
-                                context.startActivity(
-                                    Intent(Intent.ACTION_SENDTO).apply {
-                                        data = Uri.parse("smsto:${contact.number}")
-                                        putExtra("sms_body", msg)
-                                    }
-                                )
-                            }
+                            .clickable { sendQuickResponseOrOpenComposer(msg) }
                             .padding(horizontal = 18.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -661,11 +691,7 @@ fun ResultsList(
                         .fillMaxWidth()
                         .clickable {
                             quickMsgTarget = null
-                            context.startActivity(
-                                Intent(Intent.ACTION_SENDTO).apply {
-                                    data = Uri.parse("smsto:${contact.number}")
-                                }
-                            )
+                            openSmsComposer()
                         }
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -927,7 +953,12 @@ private fun ContactRow(
             onCallTap    = onCallTap,
         )
     } else {
-        ClassicContactRow(contact = contact, selected = selected, modifier = modifier)
+        ClassicContactRow(
+            contact = contact,
+            selected = selected,
+            modifier = modifier,
+            onMessageTap = onMessageTap
+        )
     }
 }
 
@@ -1037,10 +1068,10 @@ private fun ClassicContactRow(
     contact:  Contact,
     selected: Boolean,
     modifier: Modifier = Modifier,
+    onMessageTap: () -> Unit = {},
 ) {
     val rowBg = if (selected) SurfaceActive else Color.Transparent
     val isMissed = contact.isRecent && contact.callType == CallLog.Calls.MISSED_TYPE
-    val isModernRow = IsModernClassic
     val missedColor = Danger
     val nameColor = if (isMissed) missedColor else TextPrimary
     val secondaryColor = TextSecondary
@@ -1101,34 +1132,21 @@ private fun ClassicContactRow(
                 }
             }
 
-            // Right side: time + chevron
-            if (contact.isRecent && contact.lastCallTime > 0L) {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(start = 6.dp)
-                ) {
-                    Text(
-                        text = contact.lastCallTime.toTimeAgo(),
-                        color = if (isModernRow) TextHint else TextSecondary,
-                        fontSize = 13.sp,
-                        lineHeight = 14.sp,
-                        maxLines = 1
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = TextHint,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            } else {
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(BgElevated)
+                    .clickable { onMessageTap() }
+                    .border(1.dp, Border, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = TextHint,
-                    modifier = Modifier.size(18.dp)
+                    imageVector = Icons.AutoMirrored.Filled.Message,
+                    contentDescription = "Message",
+                    tint = Accent,
+                    modifier = Modifier.size(14.dp)
                 )
             }
         }
