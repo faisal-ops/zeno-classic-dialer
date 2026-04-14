@@ -12,7 +12,7 @@ This file is for **human developers and any AI coding agent** working in this re
 
   ```bash
   ./gradlew assembleRelease
-  adb install -r app/build/outputs/apk/release/zeno-classic-dialer-v3.0.0.apk
+  adb install -r app/build/outputs/apk/release/zeno-classic-dialer-v3.0.1.apk
   ```
 
 - Or use **Android Studio**: **Build → Generate Signed Bundle / APK** (or a release run configuration), then install `app-release.apk` with **`adb install -r`** as above.
@@ -37,7 +37,7 @@ This file is for **human developers and any AI coding agent** working in this re
 - **Default for this project — signed release:**
 
   ```bash
-  adb install -r app/build/outputs/apk/release/zeno-classic-dialer-v3.0.0.apk
+  adb install -r app/build/outputs/apk/release/zeno-classic-dialer-v3.0.1.apk
   ```
 
 - Debug APK (only when explicitly requested; different `applicationId` suffix `.debug` vs release):
@@ -52,5 +52,5 @@ This file is for **human developers and any AI coding agent** working in this re
 
 1. Treat **Android Studio’s JDK** as the source of truth for Java.  
 2. **Build** signed release with **`./gradlew assembleRelease`** (or Android Studio equivalent) when validating changes.  
-3. **Deploy** to hardware with **`adb install -r app/build/outputs/apk/release/zeno-classic-dialer-v3.0.0.apk`** — **always prefer signed release** for installs on device.  
+3. **Deploy** to hardware with **`adb install -r app/build/outputs/apk/release/zeno-classic-dialer-v3.0.1.apk`** — **always prefer signed release** for installs on device.  
 4. **After every fix or code change:** **assembleRelease** + **adb install** the **release** APK (see **After every fix** above), unless the user opts out or explicitly wants debug.

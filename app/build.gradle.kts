@@ -24,8 +24,8 @@ android {
         // Android 10+ — default dialer / RoleManager / modern Telecom. Lower API needs extra guards.
         minSdk = 29
         targetSdk = 34
-        versionCode = 16
-        versionName = "3.0.0"
+        versionCode = 17
+        versionName = "3.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

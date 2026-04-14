@@ -29,4 +29,4 @@ Installing a build with a new **`applicationId`** (`com.zeno.zenoclassicdialer`)
 
 Current signed release artifact naming uses the versioned file pattern:
 
-- `app/build/outputs/apk/release/zeno-classic-dialer-v3.0.0.apk`
+- `app/build/outputs/apk/release/zeno-classic-dialer-v3.0.1.apk`
