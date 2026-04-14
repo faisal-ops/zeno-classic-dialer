@@ -23,7 +23,16 @@ class SearchEngine(
             FilterMode.CONTACTS ->
                 recentsRepo.search(query, limit = 100)
         }
-        return enrichRecentsFromContacts(recents)
+        val enriched = enrichRecentsFromContacts(recents)
+        // When query is non-blank with ALL mode, append contacts not already in recents
+        if (query.isNotBlank() && mode == FilterMode.ALL) {
+            val recentNumbers = enriched.mapTo(HashSet()) { it.number.filter(Char::isDigit) }
+            val extra = contactsRepo.search(query).filter {
+                it.number.filter(Char::isDigit) !in recentNumbers
+            }
+            if (extra.isNotEmpty()) return enriched + extra
+        }
+        return enriched
     }
 
     suspend fun searchAsync(query: String, mode: FilterMode): List<Contact> = coroutineScope {
@@ -44,10 +53,18 @@ class SearchEngine(
             }
         }
 
-        // Pre-warm contacts cache in parallel with recents fetch
-        async(Dispatchers.Default) { contactsRepo.search("") }.await()
+        val contactsDeferred = async(Dispatchers.Default) { contactsRepo.search(query) }
         val recents = recentsDeferred.await()
-        enrichRecentsFromContacts(recents)
+        val enriched = enrichRecentsFromContacts(recents)
+        // When query is non-blank with ALL mode, append contacts not already in recents
+        if (query.isNotBlank() && mode == FilterMode.ALL) {
+            val recentNumbers = enriched.mapTo(HashSet()) { it.number.filter(Char::isDigit) }
+            val extra = contactsDeferred.await().filter {
+                it.number.filter(Char::isDigit) !in recentNumbers
+            }
+            if (extra.isNotEmpty()) return@coroutineScope enriched + extra
+        }
+        enriched
     }
 
     fun keypadContactMatch(query: String, mode: FilterMode, results: List<Contact>): Contact? {

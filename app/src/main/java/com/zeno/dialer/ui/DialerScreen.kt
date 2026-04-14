@@ -1229,6 +1229,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(70.dp)
                     .background(if (isModernKeypad) BgElevated else Accent)
                     .then(
                         if (isModernKeypad) Modifier.border(
@@ -1237,22 +1238,12 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                             shape = RoundedCornerShape(0.dp)
                         ) else Modifier
                     )
-                    .padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+                    .padding(start = 14.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(modifier = Modifier.weight(1f)) {
-                    var showDialpadMenu by remember { mutableStateOf(false) }
                     val clipboard = remember(context) {
                         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    }
-                    // Use primaryClipDescription (metadata only) so Android never shows
-                    // the "pasted from clipboard" system toast. The full primaryClip is only
-                    // read inside the Paste onClick, which is user-initiated and exempt.
-                    val pasteEnabled = remember(showDialpadMenu) {
-                        clipboard.primaryClipDescription?.let { desc ->
-                            desc.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) ||
-                            desc.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML)
-                        } == true
                     }
 
                     Column(
@@ -1264,7 +1255,20 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                                 onClick = {},
                                 onLongClick = {
                                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                    showDialpadMenu = true
+                                    val item = clipboard.primaryClip?.getItemAt(0)
+                                    if (item != null) {
+                                        val pasted = normalizePastedDialText(
+                                            item.coerceToText(context)?.toString().orEmpty()
+                                        )
+                                        if (pasted.isNotEmpty()) {
+                                            viewModel.setQueryDirect(pasted)
+                                            Toast.makeText(context, "Pasted", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "Nothing to paste", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        Toast.makeText(context, "Nothing to paste", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             )
                             .semantics {
@@ -1282,10 +1286,10 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                             Text(
                                 text          = state.query,
                                 color         = if (isModernKeypad) TextPrimary else Color.White,
-                                fontSize      = 32.sp,
-                                fontWeight    = FontWeight.SemiBold,
-                                letterSpacing = 1.5.sp,
-                                lineHeight    = 36.sp,
+                                fontSize      = 24.sp,
+                                fontWeight    = FontWeight.Normal,
+                                letterSpacing = 1.sp,
+                                lineHeight    = 24.sp,
                                 maxLines      = 1,
                                 overflow      = TextOverflow.Ellipsis,
                                 style         = if (digitShadow != null) TextStyle(shadow = digitShadow) else TextStyle.Default
@@ -1296,7 +1300,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                                     color      = if (isModernKeypad) Accent else Color.White.copy(alpha = 0.96f),
                                     fontSize   = 14.sp,
                                     fontWeight = FontWeight.Medium,
-                                    lineHeight = 16.sp,
+                                    lineHeight = 14.sp,
                                     maxLines   = 1,
                                     overflow   = TextOverflow.Ellipsis,
                                     style      = if (!isModernKeypad) TextStyle(
@@ -1306,7 +1310,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                                             blurRadius = 3f
                                         )
                                     ) else TextStyle.Default,
-                                    modifier   = Modifier.padding(top = 2.dp)
+                                    modifier   = Modifier.padding(top = 0.dp)
                                 )
                             }
                         } else {
@@ -1323,121 +1327,6 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                         }
                     }
 
-                    DropdownMenu(
-                        expanded = showDialpadMenu,
-                        onDismissRequest = { showDialpadMenu = false },
-                        modifier = Modifier
-                            .widthIn(min = 212.dp)
-                            .shadow(
-                                elevation = 10.dp,
-                                shape = RoundedCornerShape(12.dp),
-                                ambientColor = Color.Black.copy(alpha = 0.12f),
-                                spotColor = Color.Black.copy(alpha = 0.18f)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = Color.Black.copy(alpha = 0.08f),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .background(Color.White, RoundedCornerShape(12.dp)),
-                        offset = DpOffset(0.dp, 6.dp)
-                    ) {
-                        val hintColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        val titleStyle = MaterialTheme.typography.bodyLarge
-                        val hintStyle = MaterialTheme.typography.bodySmall
-
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(
-                                        text = stringResource(R.string.dialpad_paste),
-                                        style = titleStyle,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.dialpad_paste_hint),
-                                        style = hintStyle,
-                                        color = hintColor.copy(
-                                            alpha = if (pasteEnabled) 0.85f else 0.38f
-                                        )
-                                    )
-                                }
-                            },
-                            onClick = {
-                                showDialpadMenu = false
-                                val item = clipboard.primaryClip?.getItemAt(0) ?: return@DropdownMenuItem
-                                val pasted = normalizePastedDialText(
-                                    item.coerceToText(context)?.toString().orEmpty()
-                                )
-                                if (pasted.isNotEmpty()) viewModel.setQueryDirect(pasted)
-                            },
-                            enabled = pasteEnabled,
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.ContentPaste,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(22.dp),
-                                    tint = MaterialTheme.colorScheme.primary.copy(
-                                        alpha = if (pasteEnabled) 1f else 0.38f
-                                    )
-                                )
-                            },
-                            colors = MenuDefaults.itemColors(
-                                textColor = MaterialTheme.colorScheme.onSurface,
-                                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            ),
-                            contentPadding = MenuDefaults.DropdownMenuItemContentPadding
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                            color = Color.Black.copy(alpha = 0.06f),
-                            thickness = 1.dp
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(
-                                        text = stringResource(R.string.dialpad_copy),
-                                        style = titleStyle,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.dialpad_copy_hint),
-                                        style = hintStyle,
-                                        color = hintColor.copy(
-                                            alpha = if (hasInput) 0.85f else 0.38f
-                                        )
-                                    )
-                                }
-                            },
-                            onClick = {
-                                showDialpadMenu = false
-                                if (state.query.isNotBlank()) {
-                                    clipboard.setPrimaryClip(
-                                        ClipData.newPlainText("phone", state.query)
-                                    )
-                                    // Android 13+ shows a system clipboard notification automatically;
-                                    // no custom toast needed on any version to avoid double message.
-                                }
-                            },
-                            enabled = hasInput,
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.ContentCopy,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(22.dp),
-                                    tint = MaterialTheme.colorScheme.primary.copy(
-                                        alpha = if (hasInput) 1f else 0.38f
-                                    )
-                                )
-                            },
-                            colors = MenuDefaults.itemColors(
-                                textColor = MaterialTheme.colorScheme.onSurface,
-                                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            ),
-                            contentPadding = MenuDefaults.DropdownMenuItemContentPadding
-                        )
-                    }
                 }
                 Box(
                     modifier = Modifier
@@ -2617,6 +2506,7 @@ private fun PixelHomeContent(
             onDelete         = { number -> viewModel.deleteCallLogForNumber(number) },
             toggleExpandFlow = viewModel.toggleExpandEvent,
             onScrollFocusIndexChanged = { i -> viewModel.setScrollFocusedIndex(i) },
+            scrollToTopKey   = state.query + state.filterMode.name,
         )
     }
 }

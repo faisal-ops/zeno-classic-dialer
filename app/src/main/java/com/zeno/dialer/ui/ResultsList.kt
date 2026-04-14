@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -133,11 +134,12 @@ private fun buildRows(results: List<Contact>): List<ListRow> {
     var lastDateLabel = ""
     for (i in results.indices) {
         val c = results[i]
-        if (!c.isRecent) continue
-        val label = c.lastCallTime.toDateLabel(today, yesterday)
-        if (label != lastDateLabel) {
-            rows.add(ListRow.DateHeader(label))
-            lastDateLabel = label
+        if (c.isRecent) {
+            val label = c.lastCallTime.toDateLabel(today, yesterday)
+            if (label != lastDateLabel) {
+                rows.add(ListRow.DateHeader(label))
+                lastDateLabel = label
+            }
         }
         rows.add(ListRow.Item(c, i))
     }
@@ -178,6 +180,7 @@ fun ResultsList(
     onDelete: (String) -> Unit = {},
     toggleExpandFlow: kotlinx.coroutines.flow.SharedFlow<Int>? = null,
     onScrollFocusIndexChanged: (Int) -> Unit = {},
+    scrollToTopKey: Any? = null,
 ) {
     val context   = LocalContext.current
     val listState = rememberLazyListState()
@@ -186,6 +189,11 @@ fun ResultsList(
     val rows = remember(results) { buildRows(results) }
     val rowBringers = remember(results.size) {
         List(results.size) { BringIntoViewRequester() }
+    }
+
+    // Scroll to top whenever the search query or filter changes
+    LaunchedEffect(scrollToTopKey) {
+        if (scrollToTopKey != null) listState.scrollToItem(0)
     }
 
     // Inline history panel (Calls screen)
@@ -317,23 +325,25 @@ fun ResultsList(
 
     CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
         LazyColumn(state = listState, modifier = modifier.fillMaxSize()) {
-            items(
+            itemsIndexed(
                 items = rows,
-                key = { row ->
+                key = { index, row ->
                     when (row) {
-                        is ListRow.DateHeader -> "dh_${row.label}"
-                        is ListRow.SectionLabel -> "sl_${row.title}"
-                        is ListRow.Item -> "it_${row.contact.id}_${row.contact.number}_${row.idx}"
+                        // Headers are stateless separators — use index to guarantee uniqueness
+                        // when fuzzy-sorted results produce the same date label at multiple positions
+                        is ListRow.DateHeader -> "dh_${index}_${row.label}"
+                        is ListRow.SectionLabel -> "sl_${index}_${row.title}"
+                        is ListRow.Item -> "it_${row.contact.id}_${row.contact.number}"
                     }
                 },
-                contentType = { row ->
+                contentType = { _, row ->
                     when (row) {
                         is ListRow.DateHeader -> 0
                         is ListRow.SectionLabel -> 1
                         is ListRow.Item -> 2
                     }
                 }
-            ) { row ->
+            ) { _, row ->
                 when (row) {
                     is ListRow.DateHeader -> DateHeaderRow(label = row.label)
                     is ListRow.SectionLabel -> SectionLabelRow(title = row.title)

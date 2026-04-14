@@ -752,15 +752,30 @@ private fun ToggleRow(
     showDividerBelow: Boolean = false,
     onToggle: (Boolean) -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    var isFocused by remember { mutableStateOf(false) }
+    val highlighted = isPressed || isFocused
+
     Column(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth()
-                .clickable { onToggle(!checked) }
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .onFocusChanged { isFocused = it.isFocused }
+                .clickable(interactionSource = interactionSource, indication = null) { onToggle(!checked) }
+                .background(if (highlighted) SurfaceActive else Color.Transparent)
+                .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(36.dp)
+                    .background(if (highlighted) Accent else Color.Transparent)
+            )
+            Spacer(Modifier.width(17.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = TextPrimary, fontSize = 18.sp)
+                Text(title, color = if (highlighted) Accent else TextPrimary, fontSize = 18.sp,
+                    fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Normal)
                 if (subtitle != null) {
                     Spacer(Modifier.height(4.dp))
                     Text(subtitle, color = TextSecondary, fontSize = 15.sp)
@@ -774,6 +789,7 @@ private fun ToggleRow(
                     uncheckedThumbColor = MaterialTheme.colorScheme.outline, uncheckedTrackColor = BgElevated
                 )
             )
+            Spacer(Modifier.width(16.dp))
         }
         if (showDividerBelow) {
             SettingsDivider()
@@ -828,16 +844,30 @@ private fun PickerRow(
     selectedIndex: Int, onSelect: (Int) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    var isFocused by remember { mutableStateOf(false) }
+    val highlighted = isPressed || isFocused
 
     Column {
         Row(
             modifier = Modifier.fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .onFocusChanged { isFocused = it.isFocused }
+                .clickable(interactionSource = interactionSource, indication = null) { expanded = !expanded }
+                .background(if (highlighted) SurfaceActive else Color.Transparent)
+                .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = TextPrimary, fontSize = 19.sp)
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(40.dp)
+                    .background(if (highlighted) Accent else Color.Transparent)
+            )
+            Spacer(Modifier.width(17.dp))
+            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                Text(title, color = if (highlighted) Accent else TextPrimary, fontSize = 19.sp,
+                    fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Normal)
                 Spacer(Modifier.height(4.dp))
                 Text(currentValue, color = TextSecondary, fontSize = 16.sp)
             }
