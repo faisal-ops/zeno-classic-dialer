@@ -110,6 +110,15 @@ class MainActivity : ComponentActivity() {
         requestRequiredPermissions()
         observeCallEvents()
         observeCallEndToResetCallKeyTargets()
+
+        // Apply the theme default tab early so the onResume call is a no-op for this style,
+        // which prevents it from overriding a tab set by routeDialerIntents below.
+        run {
+            val prefs = getSharedPreferences(AppPreferences.FILE_SETTINGS, MODE_PRIVATE)
+            val style = prefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)
+            viewModel.applyDefaultTabForStyle(style)
+        }
+
         val fromToolbarCallKeyOpen =
             intent?.getBooleanExtra(
                 com.zeno.dialer.service.ButtonInterceptService.EXTRA_CALL_BUTTON_PRESSED,
@@ -303,7 +312,7 @@ class MainActivity : ComponentActivity() {
                     "tel" -> {
                         val number = data.schemeSpecificPart?.trim().orEmpty()
                         if (number.isNotBlank()) {
-                            viewModel.setCurrentTab(0)
+                            viewModel.setCurrentTab(2)
                             viewModel.setQueryDirect(number)
                             neutralizeStickyDialIntent()
                         }

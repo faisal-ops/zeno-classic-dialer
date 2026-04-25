@@ -186,9 +186,10 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun onPermissionsReady() {
         registerCallLogObserver()
-        // Re-warm contacts in case permissions were just granted
         viewModelScope.launch(Dispatchers.IO) {
             try { contactsRepo.search("") } catch (_: SecurityException) { }
+            blockedNumbersRepo.syncFromSystem()
+            refreshBlockedNumbers()
         }
         refreshFavorites()
         refreshBlockedNumbers()
@@ -466,7 +467,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch(Dispatchers.IO) {
             val state = _uiState.value
-            val results = searchEngine.search(state.query, state.filterMode)
+            val results = searchEngine.searchAsync(state.query, state.filterMode)
             val keypadMatch = searchEngine.keypadContactMatch(state.query, state.filterMode, results)
             val keepSelection =
                 (lastDialEventMs != 0L) && (SystemClock.elapsedRealtime() - lastDialEventMs < 3_000L)
@@ -610,6 +611,9 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
                 state.results.isNotEmpty() &&
                 state.scrollFocusedIndex < state.results.size ->
                 state.results[state.scrollFocusedIndex].number
+            // Prefer top search result over raw query text — raw query is only a phone number
+            // when there are no matches (e.g. user typed a full number with no contacts found).
+            state.results.isNotEmpty() -> state.results[0].number
             state.query.isNotBlank() -> state.query
             else -> return
         }

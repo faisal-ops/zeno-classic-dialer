@@ -39,6 +39,34 @@ class BlockedNumbersRepo(private val context: Context) {
 
     fun contains(number: String): Boolean = normalize(number) in getAll()
 
+    /**
+     * Pull any numbers already blocked in the platform [BlockedNumbers] provider into the
+     * local prefs list. Call once after the default-dialer role is granted so pre-existing
+     * system blocks are visible in-app without the user having to re-add them.
+     */
+    fun syncFromSystem() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
+        try {
+            val systemNumbers = mutableSetOf<String>()
+            context.contentResolver.query(
+                BlockedNumbers.CONTENT_URI,
+                arrayOf(BlockedNumbers.COLUMN_ORIGINAL_NUMBER),
+                null, null, null
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val num = normalize(cursor.getString(0) ?: continue)
+                    if (num.isNotBlank()) systemNumbers.add(num)
+                }
+            }
+            if (systemNumbers.isEmpty()) return
+            val local = getAll().toMutableSet()
+            val added = systemNumbers - local
+            if (added.isNotEmpty()) save(local + added)
+        } catch (_: SecurityException) {
+        } catch (_: Exception) {
+        }
+    }
+
     private fun save(values: Set<String>) {
         prefs.edit().putString(KEY_BLOCKED_NUMBERS, values.joinToString(SEPARATOR)).apply()
     }

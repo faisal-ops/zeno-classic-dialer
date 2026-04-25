@@ -35,13 +35,17 @@ class KeyHandler(
         return false
     }
 
-    private fun isControlKey(keyCode: Int): Boolean = keyCode in setOf(
-        KeyEvent.KEYCODE_CALL, KeyEvent.KEYCODE_ENDCALL, KeyEvent.KEYCODE_MENU,
-        KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
-        KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
-        KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
-        KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_ESCAPE, KeyEvent.KEYCODE_TAB
-    )
+    private fun isControlKey(keyCode: Int): Boolean = keyCode in CONTROL_KEYS
+
+    companion object {
+        private val CONTROL_KEYS = intArrayOf(
+            KeyEvent.KEYCODE_CALL, KeyEvent.KEYCODE_ENDCALL, KeyEvent.KEYCODE_MENU,
+            KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_ESCAPE, KeyEvent.KEYCODE_TAB
+        ).toHashSet()
+    }
 
     private fun activateFavoriteTile(state: DialerUiState): Boolean {
         if (state.favoriteFocusIndex < 0) return false
@@ -201,10 +205,11 @@ class KeyHandler(
                 // Keypad tab with no digits entered: toggle expand.
                 viewModel.currentTabIndex == 2 && state.query.isBlank() -> viewModel.toggleExpandSelected()
                 else -> {
-                    Log.i(
-                        "ZenoDialer",
-                        "KEYCODE_${if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER) "DPAD_CENTER" else "ENTER"} tab=${viewModel.currentTabIndex} selectedIndex=${state.selectedIndex} query='${state.query}' resultsSize=${state.results.size}"
-                    )
+                    // If results exist but no row is highlighted, auto-focus the top match
+                    // so the highlight is visible for a moment before the call screen opens.
+                    if (state.results.isNotEmpty() && state.selectedIndex < 0 && state.scrollFocusedIndex < 0) {
+                        viewModel.selectItem(0)
+                    }
                     viewModel.callSelected()
                 }
             }

@@ -43,16 +43,6 @@ object CallStateHolder {
     @Volatile
     private var dtmfStopRunnable: Runnable? = null
 
-    /**
-     * `Call.stopDtmfTone()` exists on many Android versions, but we use reflection
-     * to keep compilation/runtime resilient across framework changes.
-     */
-    private val stopDtmfToneMethod = run {
-        Call::class.java.methods.firstOrNull { m ->
-            m.name == "stopDtmfTone" && m.parameterTypes.isEmpty()
-        }
-    }
-
     // ── Update / remove ──────────────────────────────────────────────────────
 
     /**
@@ -198,10 +188,8 @@ object CallStateHolder {
         val info = _info.value ?: return
         if (info.state != Call.STATE_ACTIVE) return
         try {
-            stopDtmfToneMethod?.invoke(info.call)
-        } catch (_: Exception) {
-            // ignore
-        }
+            info.call.stopDtmfTone()
+        } catch (_: Exception) { }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

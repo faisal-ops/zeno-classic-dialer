@@ -14,14 +14,9 @@ class SearchEngine(
             return contactsRepo.search(query)
         }
         val recents = when (mode) {
-            FilterMode.MISSED ->
-                recentsRepo.search(query, missedOnly = true, limit = 100)
-            FilterMode.RECEIVED ->
-                recentsRepo.search(query, incomingOnly = true, limit = 100)
-            FilterMode.ALL, FilterMode.RECENTS ->
-                recentsRepo.search(query, limit = 100)
-            FilterMode.CONTACTS ->
-                recentsRepo.search(query, limit = 100)
+            FilterMode.MISSED    -> recentsRepo.search(query, missedOnly = true, limit = 100)
+            FilterMode.RECEIVED  -> recentsRepo.search(query, incomingOnly = true, limit = 100)
+            else                 -> recentsRepo.search(query, limit = 100)
         }
         val enriched = enrichRecentsFromContacts(recents)
         // When query is non-blank with ALL mode, append contacts not already in recents
@@ -42,22 +37,20 @@ class SearchEngine(
 
         val recentsDeferred = async(Dispatchers.IO) {
             when (mode) {
-                FilterMode.MISSED ->
-                    recentsRepo.search(query, missedOnly = true, limit = 100)
-                FilterMode.RECEIVED ->
-                    recentsRepo.search(query, incomingOnly = true, limit = 100)
-                FilterMode.ALL, FilterMode.RECENTS ->
-                    recentsRepo.search(query, limit = 100)
-                FilterMode.CONTACTS ->
-                    recentsRepo.search(query, limit = 100)
+                FilterMode.MISSED    -> recentsRepo.search(query, missedOnly = true, limit = 100)
+                FilterMode.RECEIVED  -> recentsRepo.search(query, incomingOnly = true, limit = 100)
+                else                 -> recentsRepo.search(query, limit = 100)
             }
         }
 
-        val contactsDeferred = async(Dispatchers.Default) { contactsRepo.search(query) }
-        val recents = recentsDeferred.await()
-        val enriched = enrichRecentsFromContacts(recents)
-        // When query is non-blank with ALL mode, append contacts not already in recents
-        if (query.isNotBlank() && mode == FilterMode.ALL) {
+        // Only run a parallel contacts search when its result will actually be appended
+        val contactsDeferred = if (query.isNotBlank() && mode == FilterMode.ALL) {
+            async(Dispatchers.Default) { contactsRepo.search(query) }
+        } else null
+
+        val enriched = enrichRecentsFromContacts(recentsDeferred.await())
+
+        if (contactsDeferred != null) {
             val recentNumbers = enriched.mapTo(HashSet()) { it.number.filter(Char::isDigit) }
             val extra = contactsDeferred.await().filter {
                 it.number.filter(Char::isDigit) !in recentNumbers
