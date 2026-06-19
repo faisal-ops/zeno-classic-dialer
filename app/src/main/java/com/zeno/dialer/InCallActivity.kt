@@ -30,7 +30,7 @@ class InCallActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (!granted) {
-            Toast.makeText(this, "SMS permission required for quick reply", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.sms_permission_required), Toast.LENGTH_SHORT).show()
             return@registerForActivityResult
         }
         val msg = pendingQuickReply ?: return@registerForActivityResult
@@ -183,9 +183,9 @@ class InCallActivity : ComponentActivity() {
         try {
             SmsManager.getDefault().sendTextMessage(number, null, message, null, null)
             CallStateHolder.reject()
-            Toast.makeText(this, "Message sent", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.message_sent), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.failed_to_send_message), Toast.LENGTH_SHORT).show()
         }
     }
 }
