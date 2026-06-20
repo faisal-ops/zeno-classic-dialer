@@ -77,6 +77,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import com.zeno.dialer.ui.Accent
 import com.zeno.dialer.ui.BgPage
 import com.zeno.dialer.ui.BgElevated
@@ -85,6 +86,7 @@ import com.zeno.dialer.ui.SurfaceActive
 import com.zeno.dialer.ui.TextHint
 import com.zeno.dialer.ui.TextPrimary
 import com.zeno.dialer.ui.TextSecondary
+import androidx.compose.ui.res.stringResource
 import com.zeno.dialer.ui.AccentGreen
 import com.zeno.dialer.ui.theme.DialerStyle
 import com.zeno.dialer.ui.theme.DialerTheme
@@ -173,21 +175,21 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
     Column(
         modifier = Modifier.fillMaxSize().background(BgPage)
     ) {
-        SettingsTopBar(title = "Settings", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.settings), onBack = onBack)
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             // Call Assist
-            item { SectionHeader("Call Assist") }
+            item { SectionHeader(stringResource(R.string.call_assist)) }
             item {
-                SettingsNavItem(icon = Icons.Default.Block, title = "Caller ID & spam",
+                SettingsNavItem(icon = Icons.Default.Block, title = stringResource(R.string.caller_id_spam),
                     showDividerBelow = false,
                     onClick = { onNavigate(SettingsPage.CALLER_ID_SPAM) })
             }
 
             // General
-            item { SectionHeader("General") }
+            item { SectionHeader(stringResource(R.string.general)) }
             item {
-                SettingsNavItem(icon = Icons.Default.Settings, title = "Accessibility",
+                SettingsNavItem(icon = Icons.Default.Settings, title = stringResource(R.string.accessibility),
                     onClick = {
                         launchSafe(context,
                             Intent("android.telecom.action.SHOW_CALL_ACCESSIBILITY_SETTINGS"),
@@ -195,11 +197,11 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
                     })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.Phone, title = "Assisted dialing",
+                SettingsNavItem(icon = Icons.Default.Phone, title = stringResource(R.string.assisted_dialing),
                     onClick = { onNavigate(SettingsPage.ASSISTED_DIALING) })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.Block, title = "Blocked numbers",
+                SettingsNavItem(icon = Icons.Default.Block, title = stringResource(R.string.blocked_numbers),
                     onClick = {
                         launchSafe(context,
                             Intent("android.telecom.action.MANAGE_BLOCKED_NUMBERS"),
@@ -208,51 +210,51 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
                     })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.Call, title = "Calls",
+                SettingsNavItem(icon = Icons.Default.Call, title = stringResource(R.string.calls),
                     onClick = { onNavigate(SettingsPage.CALLS) })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.Settings, title = "Display options",
+                SettingsNavItem(icon = Icons.Default.Settings, title = stringResource(R.string.display_options),
                     onClick = { onNavigate(SettingsPage.DISPLAY_OPTIONS) })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.QuestionAnswer, title = "Quick reply templates",
+                SettingsNavItem(icon = Icons.Default.QuestionAnswer, title = stringResource(R.string.quick_reply_templates_title),
                     onClick = { onNavigate(SettingsPage.QUICK_RESPONSES) })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.MusicNote, title = "Sounds and vibration",
+                SettingsNavItem(icon = Icons.Default.MusicNote, title = stringResource(R.string.sounds_vibration),
                     onClick = { launchSafe(context, Intent(Settings.ACTION_SOUND_SETTINGS)) })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.Voicemail, title = "Voicemail",
+                SettingsNavItem(icon = Icons.Default.Voicemail, title = stringResource(R.string.voicemail),
                     onClick = { onNavigate(SettingsPage.VOICEMAIL) })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.MusicNote, title = "Contact ringtones",
+                SettingsNavItem(icon = Icons.Default.MusicNote, title = stringResource(R.string.contact_ringtones),
                     onClick = { onNavigate(SettingsPage.CONTACT_RINGTONES) })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.Person, title = "Calling card",
+                SettingsNavItem(icon = Icons.Default.Person, title = stringResource(R.string.calling_card),
                     showDividerBelow = false,
                     onClick = { onNavigate(SettingsPage.CALLING_CARD) })
             }
 
             // Advanced
-            item { SectionHeader("Advanced") }
+            item { SectionHeader(stringResource(R.string.advanced)) }
             item {
-                SettingsNavItem(icon = Icons.Default.Notifications, title = "Caller ID announcement",
+                SettingsNavItem(icon = Icons.Default.Notifications, title = stringResource(R.string.caller_id_announcement),
                     onClick = { onNavigate(SettingsPage.CALLER_ID_ANNOUNCEMENT) })
             }
             item {
-                SettingsNavItem(icon = Icons.Default.Phone, title = "Flip To Silence",
+                SettingsNavItem(icon = Icons.Default.Phone, title = stringResource(R.string.flip_to_silence),
                     onClick = { onNavigate(SettingsPage.FLIP_TO_SILENCE) })
             }
 
             // About
-            item { SectionHeader("About") }
+            item { SectionHeader(stringResource(R.string.about)) }
             item {
-                SettingsNavItem(icon = Icons.Default.Info, title = "About Zeno Classic Dialer",
-                    subtitle = "Version ${getAppVersion(context)}",
+                SettingsNavItem(icon = Icons.Default.Info, title = stringResource(R.string.about_app),
+                    subtitle = stringResource(R.string.version_label, getAppVersion(context)),
                     showDividerBelow = false,
                     onClick = {
                         launchSafe(context,
@@ -274,14 +276,14 @@ private fun CallsScreen(onBack: () -> Unit) {
     var showClearDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Calls", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.calls), onBack = onBack)
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item { SectionHeader("Call history") }
+            item { SectionHeader(stringResource(R.string.calls)) }
             item {
                 SettingsNavItem(
                     icon           = Icons.Default.Delete,
-                    title          = "Clear call history",
+                    title          = stringResource(R.string.clear_history),
                     showDividerBelow = false,
                     onClick        = { showClearDialog = true }
                 )
@@ -293,8 +295,8 @@ private fun CallsScreen(onBack: () -> Unit) {
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title   = { Text("Clear call history?") },
-            text    = { Text("All call log entries will be permanently deleted.") },
+            title   = { Text(stringResource(R.string.clear_history_confirm_title)) },
+            text    = { Text(stringResource(R.string.clear_history_confirm_msg)) },
             confirmButton = {
                 TextButton(onClick = {
                     try {
@@ -302,10 +304,10 @@ private fun CallsScreen(onBack: () -> Unit) {
                     } catch (_: Exception) { }
                     showClearDialog = false
                     onBack()
-                }) { Text("Clear") }
+                }) { Text(stringResource(R.string.clear)) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showClearDialog = false }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -320,27 +322,27 @@ private fun CallerIdSpamScreen(onBack: () -> Unit) {
     var filterSpam by remember { mutableStateOf(prefs.getBoolean(AppPreferences.KEY_FILTER_SPAM, false)) }
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Caller ID & spam", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.caller_id_spam), onBack = onBack)
         Spacer(Modifier.height(16.dp))
 
         ToggleRow(
-            title = "See caller and spam ID",
-            subtitle = "Identify business and spam numbers",
+            title = stringResource(R.string.see_caller_spam_id),
+            subtitle = stringResource(R.string.see_caller_spam_id_desc),
             checked = seeCallerId,
             showDividerBelow = true,
             onToggle = { seeCallerId = it; prefs.edit().putBoolean(AppPreferences.KEY_CALLER_SPAM_ID, it).apply() }
         )
 
         ToggleRow(
-            title = "Filter spam calls",
-            subtitle = "Prevent suspected spam calls from disturbing you",
+            title = stringResource(R.string.filter_spam),
+            subtitle = stringResource(R.string.filter_spam_desc),
             checked = filterSpam,
             onToggle = { filterSpam = it; prefs.edit().putBoolean(AppPreferences.KEY_FILTER_SPAM, it).apply() }
         )
 
         Spacer(Modifier.height(24.dp))
 
-        InfoRow("Zeno Classic Dialer will attempt to show you useful information when you make or receive a call, such as a name for a number not in your contacts or a warning when an incoming call is suspected to be spam.")
+        InfoRow(stringResource(R.string.caller_id_spam_info))
     }
 }
 
@@ -352,11 +354,11 @@ private fun AssistedDialingScreen(onBack: () -> Unit) {
     var enabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.KEY_ASSISTED_DIALING, false)) }
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Assisted dialing", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.assisted_dialing), onBack = onBack)
         Spacer(Modifier.height(16.dp))
 
         ToggleRow(
-            title = "Assisted dialing",
+            title = stringResource(R.string.assisted_dialing),
             checked = enabled,
             onToggle = { enabled = it; prefs.edit().putBoolean(AppPreferences.KEY_ASSISTED_DIALING, it).apply() }
         )
@@ -368,9 +370,9 @@ private fun AssistedDialingScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("Default home country", color = TextPrimary, fontSize = SettingsTileTitleSize)
+                Text(stringResource(R.string.default_home_country), color = TextPrimary, fontSize = SettingsTileTitleSize)
                 Spacer(Modifier.height(4.dp))
-                Text("Automatically detected", color = TextSecondary, fontSize = SettingsTileSecondarySize)
+                Text(stringResource(R.string.auto_detected), color = TextSecondary, fontSize = SettingsTileSecondarySize)
             }
         }
 
@@ -378,7 +380,7 @@ private fun AssistedDialingScreen(onBack: () -> Unit) {
         SettingsDivider()
         Spacer(Modifier.height(16.dp))
 
-        InfoRow("Assisted dialing predicts and adds a country code when you call while traveling abroad.")
+        InfoRow(stringResource(R.string.assisted_dialing_info))
     }
 }
 
@@ -400,12 +402,12 @@ private fun QuickResponsesScreen(onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Quick reply templates", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.quick_reply_templates_title), onBack = onBack)
         Spacer(Modifier.height(16.dp))
 
         ToggleRow(
-            title = "Send quick responses instantly",
-            subtitle = "When off, opens your SMS app with text prefilled",
+            title = stringResource(R.string.send_responses_instantly),
+            subtitle = stringResource(R.string.send_responses_instantly_desc),
             checked = instantSend,
             showDividerBelow = true,
             onToggle = {
@@ -447,15 +449,19 @@ private fun DisplayOptionsScreen(onBack: () -> Unit) {
     val prefs = rememberPrefs()
     var portraitMode by remember { mutableStateOf(prefs.getBoolean(AppPreferences.KEY_PORTRAIT_MODE, true)) }
     var themeChoice by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)) }
-    val themes = listOf("Original Classic", "Modern Classic", "Pixel")
+    val themes = listOf(
+        stringResource(R.string.theme_original_classic),
+        stringResource(R.string.theme_modern_classic),
+        stringResource(R.string.theme_pixel)
+    )
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Display options", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.display_options), onBack = onBack)
         Spacer(Modifier.height(16.dp))
 
-        SectionLabel("Appearance")
+        SectionLabel(stringResource(R.string.appearance))
         PickerRow(
-            title = "Choose theme",
+            title = stringResource(R.string.choose_theme),
             currentValue = themes[themeChoice.coerceIn(0, themes.lastIndex)],
             options = themes,
             selectedIndex = themeChoice.coerceIn(0, themes.lastIndex),
@@ -469,10 +475,10 @@ private fun DisplayOptionsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(16.dp))
 
-        SectionLabel("Controls")
+        SectionLabel(stringResource(R.string.controls))
         ToggleRow(
-            title = "Keep portrait mode on calls",
-            subtitle = "Prevents accidental auto-rotation when on a call",
+            title = stringResource(R.string.keep_portrait),
+            subtitle = stringResource(R.string.keep_portrait_desc),
             checked = portraitMode,
             onToggle = { portraitMode = it; prefs.edit().putBoolean(AppPreferences.KEY_PORTRAIT_MODE, it).apply() }
         )
@@ -488,12 +494,12 @@ private fun FlipToSilenceScreen(onBack: () -> Unit) {
     var enabled by remember { mutableStateOf(prefs.getBoolean(AppPreferences.KEY_FLIP_TO_SILENCE, false)) }
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Flip To Silence", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.flip_to_silence), onBack = onBack)
         Spacer(Modifier.height(16.dp))
 
         ToggleRow(
-            title = "Flip To Silence",
-            subtitle = "To silence an incoming call, place your device face down on a flat surface",
+            title = stringResource(R.string.flip_to_silence),
+            subtitle = stringResource(R.string.flip_to_silence_desc),
             checked = enabled,
             onToggle = { enabled = it; prefs.edit().putBoolean(AppPreferences.KEY_FLIP_TO_SILENCE, it).apply() }
         )
@@ -506,13 +512,13 @@ private fun FlipToSilenceScreen(onBack: () -> Unit) {
 private fun CallerIdAnnouncementScreen(onBack: () -> Unit) {
     val prefs = rememberPrefs()
     var selected by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_CALLER_ID_ANNOUNCE, 0)) }
-    val options = listOf("Never", "Always", "Only when using a headset")
+    val options = listOf(stringResource(R.string.never), stringResource(R.string.always), stringResource(R.string.headset_only))
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Caller ID announcement", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.caller_id_announcement), onBack = onBack)
         Spacer(Modifier.height(16.dp))
 
-        Text("Announce caller ID", color = TextPrimary, fontSize = SettingsTileTitleSize,
+        Text(stringResource(R.string.announce_caller_id), color = TextPrimary, fontSize = SettingsTileTitleSize,
             modifier = Modifier.padding(horizontal = 20.dp))
         Spacer(Modifier.height(4.dp))
         Text(options[selected], color = TextSecondary, fontSize = SettingsTileSecondarySize,
@@ -544,7 +550,7 @@ private fun CallerIdAnnouncementScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(24.dp))
-        InfoRow("The caller\u2019s name and number will be read out loud for incoming calls.")
+        InfoRow(stringResource(R.string.caller_id_announcement_info))
     }
 }
 
@@ -557,7 +563,7 @@ private fun VoicemailScreen(onBack: () -> Unit) {
     var visualVoicemail by remember { mutableStateOf(prefs.getBoolean(AppPreferences.KEY_VISUAL_VOICEMAIL, false)) }
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Voicemail", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.voicemail), onBack = onBack)
         Spacer(Modifier.height(16.dp))
 
         // Notifications
@@ -571,15 +577,15 @@ private fun VoicemailScreen(onBack: () -> Unit) {
                 .padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Notifications", color = TextPrimary, fontSize = SettingsTileTitleSize, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.notifications), color = TextPrimary, fontSize = SettingsTileTitleSize, modifier = Modifier.weight(1f))
             Icon(Icons.Default.ChevronRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
         }
 
         Spacer(Modifier.height(8.dp))
 
         ToggleRow(
-            title = "Visual voicemail",
-            subtitle = "The carrier may not support visual voicemail",
+            title = stringResource(R.string.visual_voicemail),
+            subtitle = stringResource(R.string.visual_voicemail_desc),
             checked = visualVoicemail,
             onToggle = { visualVoicemail = it; prefs.edit().putBoolean(AppPreferences.KEY_VISUAL_VOICEMAIL, it).apply() }
         )
@@ -593,7 +599,7 @@ private fun VoicemailScreen(onBack: () -> Unit) {
                 .padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Advanced Settings", color = TextPrimary, fontSize = SettingsTileTitleSize, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.advanced_settings), color = TextPrimary, fontSize = SettingsTileTitleSize, modifier = Modifier.weight(1f))
             Icon(Icons.Default.ChevronRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
         }
     }
@@ -609,7 +615,7 @@ private fun ContactRingtonesScreen(onBack: () -> Unit) {
         modifier = Modifier.fillMaxSize().background(BgPage),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        SettingsTopBar(title = "Contact ringtones", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.contact_ringtones), onBack = onBack)
         Spacer(Modifier.weight(0.3f))
 
         Box(
@@ -622,7 +628,7 @@ private fun ContactRingtonesScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(32.dp))
 
         Text(
-            text = "Add a custom ringtone to individual contacts to help you recognize who\u2019s calling. To manage the default ringtone for this device, visit Settings.",
+            text = stringResource(R.string.contact_ringtones_desc),
             color = TextSecondary, fontSize = 17.sp, textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 32.dp)
         )
@@ -646,7 +652,7 @@ private fun ContactRingtonesScreen(onBack: () -> Unit) {
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Add contact ringtone",
+                    stringResource(R.string.add_contact_ringtone),
                     color = MaterialTheme.colorScheme.inverseOnSurface,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Medium
@@ -665,7 +671,7 @@ private fun CallingCardScreen(onBack: () -> Unit) {
     val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
-        SettingsTopBar(title = "Calling card", onBack = onBack)
+        SettingsTopBar(title = stringResource(R.string.calling_card), onBack = onBack)
         Spacer(Modifier.height(16.dp))
 
         // Illustration
@@ -680,12 +686,12 @@ private fun CallingCardScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(24.dp))
 
         // Your calling card
-        Text("Your calling card", color = TextSecondary, fontSize = 16.sp,
+        Text(stringResource(R.string.your_calling_card), color = TextSecondary, fontSize = 16.sp,
             modifier = Modifier.padding(horizontal = 20.dp))
         Spacer(Modifier.height(8.dp))
         CardRow(
-            text = "How you\u2019ll appear to others when making or receiving calls",
-            buttonLabel = "Create",
+            text = stringResource(R.string.your_calling_card_desc),
+            buttonLabel = stringResource(R.string.create),
             onClick = {
                 launchSafe(context,
                     Intent(Intent.ACTION_VIEW, ContactsContract.Profile.CONTENT_URI),
@@ -697,12 +703,12 @@ private fun CallingCardScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(24.dp))
 
         // Contact calling card
-        Text("Contact calling card", color = TextSecondary, fontSize = 16.sp,
+        Text(stringResource(R.string.contact_calling_card), color = TextSecondary, fontSize = 16.sp,
             modifier = Modifier.padding(horizontal = 20.dp))
         Spacer(Modifier.height(8.dp))
         CardRow(
-            text = "How you see your contact\u2019s name and image when they call",
-            buttonLabel = "Create",
+            text = stringResource(R.string.contact_calling_card_desc),
+            buttonLabel = stringResource(R.string.create),
             onClick = {
                 launchSafe(context, Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI))
             }
@@ -722,7 +728,7 @@ private fun SettingsTopBar(title: String, onBack: () -> Unit) {
             modifier = Modifier.size(48.dp).clip(CircleShape).clickable { onBack() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextPrimary, modifier = Modifier.size(22.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), tint = TextPrimary, modifier = Modifier.size(22.dp))
         }
         Text(title, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
     }

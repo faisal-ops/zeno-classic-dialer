@@ -222,13 +222,13 @@ internal fun avatarColor(name: String): Color =
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-enum class DialerTab(val label: String, @DrawableRes val iconRes: Int) {
-    CALLS("Calls", R.drawable.ic_bb_calls),
-    CONTACTS("Contacts", R.drawable.ic_bb_contacts),
-    KEYPAD("Dial Pad", R.drawable.ic_bb_dialpad),
+enum class DialerTab(@androidx.annotation.StringRes val labelRes: Int, @DrawableRes val iconRes: Int) {
+    CALLS(R.string.tab_calls, R.drawable.ic_bb_calls),
+    CONTACTS(R.string.tab_contacts, R.drawable.ic_bb_contacts),
+    KEYPAD(R.string.tab_dial_pad, R.drawable.ic_bb_dialpad),
     // Pixel theme tabs — icon drawn via ImageVector in BottomNavBar; iconRes unused
-    FAVORITES("Favorites", R.drawable.ic_bb_calls),
-    HOME("Home", R.drawable.ic_bb_calls),
+    FAVORITES(R.string.tab_favorites, R.drawable.ic_bb_calls),
+    HOME(R.string.tab_home, R.drawable.ic_bb_calls),
 }
 
 // ── Root screen ──────────────────────────────────────────────────────────────
@@ -590,7 +590,7 @@ private fun ContactsContent(
                 modifier = Modifier.weight(1f),
                 decorationBox = { inner ->
                     if (state.query.isBlank()) {
-                        Text("Search contacts", color = TextHint, fontSize = 17.sp)
+                        Text(stringResource(R.string.search_contacts), color = TextHint, fontSize = 17.sp)
                     }
                     inner()
                 }
@@ -605,7 +605,7 @@ private fun ContactsContent(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Clear",
+                        contentDescription = stringResource(R.string.clear),
                         tint = TextSecondary,
                         modifier = Modifier.size(18.dp)
                     )
@@ -627,7 +627,7 @@ private fun ContactsContent(
             if (flatRows.isEmpty()) {
                 item {
                     Text(
-                        text = "No contacts",
+                        text = stringResource(R.string.no_contacts),
                         color = TextSecondary,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(16.dp)
@@ -706,7 +706,7 @@ private fun ContactsContent(
                                         lineHeight = 18.sp
                                     )
                                     Text(
-                                        text = if ((contact.name.hashCode() and 1) == 0) "Mobile" else "Work",
+                                        text = if ((contact.name.hashCode() and 1) == 0) stringResource(R.string.mobile) else stringResource(R.string.work),
                                         color = TextSecondary,
                                         fontSize = 15.sp,
                                         lineHeight = 16.sp,
@@ -852,7 +852,7 @@ private fun FavoriteTilesRow(
         ) {
             item(key = "settings_tile") {
                 FavoriteTile(
-                    title = "Settings",
+                    title = stringResource(R.string.settings),
                     background = Color(0xFF4B3A68),
                     focused = focusedIndex == 0,
                     onClick = onOpenSettings,
@@ -989,9 +989,9 @@ private fun AllMissedTabs(
     modifier: Modifier = Modifier,
 ) {
     val tabs = listOf(
-        FilterMode.ALL to "All",
-        FilterMode.MISSED to "Missed",
-        FilterMode.RECEIVED to "Received",
+        FilterMode.ALL to stringResource(R.string.filter_all),
+        FilterMode.MISSED to stringResource(R.string.filter_missed),
+        FilterMode.RECEIVED to stringResource(R.string.filter_received),
     )
     val selected = when (current) {
         FilterMode.MISSED -> FilterMode.MISSED
@@ -1108,7 +1108,7 @@ private fun SuggestionRow(
         ) {
             Icon(
                 imageVector        = Icons.Default.Favorite,
-                contentDescription = if (isPinned) "Unpin" else "Pin",
+                contentDescription = if (isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin),
                 tint               = if (isPinned) AccentGreen else TextSecondary,
                 modifier           = Modifier.size(18.dp)
             )
@@ -1125,7 +1125,7 @@ private fun SuggestionRow(
         ) {
             Icon(
                 imageVector        = Icons.Default.Phone,
-                contentDescription = "Call",
+                contentDescription = stringResource(R.string.call),
                 tint               = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                 modifier           = Modifier.size(18.dp)
             )
@@ -1234,12 +1234,12 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                                         )
                                         if (pasted.isNotEmpty()) {
                                             viewModel.setQueryDirect(pasted)
-                                            Toast.makeText(context, "Pasted", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.pasted), Toast.LENGTH_SHORT).show()
                                         } else {
-                                            Toast.makeText(context, "Nothing to paste", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.nothing_to_paste), Toast.LENGTH_SHORT).show()
                                         }
                                     } else {
-                                        Toast.makeText(context, "Nothing to paste", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.nothing_to_paste), Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             )
@@ -1287,7 +1287,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                             }
                         } else {
                             Text(
-                                text          = "Enter Number",
+                                text          = stringResource(R.string.enter_number),
                                 color         = if (isModernKeypad) TextHint else Color.White.copy(alpha = 0.72f),
                                 fontSize      = if (isModernKeypad) 17.sp else 16.sp,
                                 fontWeight    = FontWeight.Medium,
@@ -1319,7 +1319,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.PersonAdd,
-                        contentDescription = "Add contact",
+                        contentDescription = stringResource(R.string.add_contact),
                         tint = if (isModernKeypad) AccentMuted else Color.White.copy(alpha = 0.9f),
                         modifier = Modifier.size(22.dp)
                     )
@@ -1399,13 +1399,13 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Phone,
-                        contentDescription = "Call",
+                        contentDescription = stringResource(R.string.call),
                         tint = Color.White,
                         modifier = Modifier.size(if (isModernKeypad) 20.dp else 18.dp)
                     )
                     Spacer(Modifier.width(7.dp))
                     Text(
-                        "Call",
+                        stringResource(R.string.call),
                         color      = Color.White,
                         fontSize   = if (isModernKeypad) 15.sp else 14.sp,
                         fontWeight = FontWeight.SemiBold
@@ -1426,7 +1426,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Backspace,
-                        contentDescription = "Backspace",
+                        contentDescription = stringResource(R.string.backspace),
                         tint = if (isModernKeypad) TextSecondary else Color.White,
                         modifier = Modifier.size(20.dp)
                     )
@@ -1643,12 +1643,12 @@ private fun PixelKeypadContent(state: DialerUiState, viewModel: DialerViewModel)
                                 val pasted = normalizePastedDialText(raw)
                                 if (pasted.isNotEmpty()) {
                                     viewModel.setQueryDirect(state.query + pasted)
-                                    Toast.makeText(context, "Pasted", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.pasted), Toast.LENGTH_SHORT).show()
                                 } else {
-                                    Toast.makeText(context, "Nothing to paste", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.nothing_to_paste), Toast.LENGTH_SHORT).show()
                                 }
                             } else {
-                                Toast.makeText(context, "Nothing to paste", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.nothing_to_paste), Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
@@ -1701,7 +1701,7 @@ private fun PixelKeypadContent(state: DialerUiState, viewModel: DialerViewModel)
                     ) {
                         Icon(
                             imageVector        = Icons.AutoMirrored.Filled.Backspace,
-                            contentDescription = "Delete",
+                            contentDescription = stringResource(R.string.delete),
                             tint               = TextSecondary,
                             modifier           = Modifier.size(20.dp)
                         )
@@ -1762,7 +1762,7 @@ private fun PixelKeypadContent(state: DialerUiState, viewModel: DialerViewModel)
                 ) {
                     Icon(
                         imageVector        = Icons.Default.Phone,
-                        contentDescription = "Call",
+                        contentDescription = stringResource(R.string.call),
                         tint               = Color.White,
                         modifier           = Modifier.size(26.dp)
                     )
@@ -1865,9 +1865,9 @@ private fun PixelDialpadKeyPill(
 // ── Bottom nav bar ───────────────────────────────────────────────────────────
 
 private val pixelNavTabs = listOf(
-    Triple(DialerTab.FAVORITES, "Favorites", Icons.Default.Favorite),
-    Triple(DialerTab.HOME,      "Home",      Icons.Default.Home),
-    Triple(DialerTab.KEYPAD,    "Keypad",    Icons.Default.Dialpad),
+    Triple(DialerTab.FAVORITES, R.string.tab_favorites, Icons.Default.Favorite),
+    Triple(DialerTab.HOME,      R.string.tab_home,      Icons.Default.Home),
+    Triple(DialerTab.KEYPAD,    R.string.tab_keypad,    Icons.Default.Dialpad),
 )
 
 @Composable
@@ -1892,10 +1892,10 @@ private fun BottomNavBar(current: DialerTab, showCallsBadge: Boolean, isPixel: B
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isPixel) {
-                pixelNavTabs.forEach { (tab, label, icon) ->
+                pixelNavTabs.forEach { (tab, labelRes, icon) ->
                     PixelNavItem(
                         icon     = icon,
-                        label    = label,
+                        label    = stringResource(labelRes),
                         selected = current == tab,
                         onClick  = { onSelect(tab) },
                         modifier = Modifier.weight(1f)
@@ -1905,7 +1905,7 @@ private fun BottomNavBar(current: DialerTab, showCallsBadge: Boolean, isPixel: B
                 listOf(DialerTab.CALLS, DialerTab.CONTACTS, DialerTab.KEYPAD).forEach { tab ->
                     NavItem(
                         iconRes   = tab.iconRes,
-                        label     = tab.label,
+                        label     = stringResource(tab.labelRes),
                         selected  = current == tab,
                         showBadge = IsModernClassic && showCallsBadge && tab == DialerTab.CALLS,
                         onClick   = { onSelect(tab) },
@@ -2076,14 +2076,14 @@ private fun SearchBar(
             ) {
                 Icon(
                     imageVector        = Icons.Default.Menu,
-                    contentDescription = "Menu",
+                    contentDescription = stringResource(R.string.menu),
                     tint               = TextSecondary,
                     modifier           = Modifier.size(20.dp)
                 )
             }
 
             Text(
-                text     = if (displayQuery.isEmpty()) "Search contacts" else displayQuery,
+                text     = if (displayQuery.isEmpty()) stringResource(R.string.search_contacts) else displayQuery,
                 color    = if (displayQuery.isEmpty()) TextSecondary else TextPrimary,
                 style    = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
@@ -2100,7 +2100,7 @@ private fun SearchBar(
             ) {
                 Icon(
                     imageVector        = Icons.Default.Mic,
-                    contentDescription = "Voice search",
+                    contentDescription = stringResource(R.string.voice_search),
                     tint               = TextSecondary,
                     modifier           = Modifier.size(20.dp)
                 )
@@ -2115,7 +2115,7 @@ private fun SearchBar(
             ) {
                 Icon(
                     imageVector        = Icons.Default.Contacts,
-                    contentDescription = "Contacts",
+                    contentDescription = stringResource(R.string.tab_contacts),
                     tint               = TextSecondary,
                     modifier           = Modifier.size(20.dp)
                 )
@@ -2126,17 +2126,17 @@ private fun SearchBar(
 
 // ── Filter chips ─────────────────────────────────────────────────────────────
 
-private data class ChipDef(val mode: FilterMode, val label: String)
-private val filterChips = listOf(
-    ChipDef(FilterMode.ALL,      "All"),
-    ChipDef(FilterMode.MISSED,   "Missed"),
-    ChipDef(FilterMode.RECEIVED, "Received"),
-    ChipDef(FilterMode.CONTACTS, "Contacts"),
-    ChipDef(FilterMode.RECENTS,  "Recents"),
-)
+private data class ChipDef(val mode: FilterMode, val labelRes: Int)
 
 @Composable
 private fun FilterChipRow(current: FilterMode, onSelect: (FilterMode) -> Unit) {
+    val filterChips = listOf(
+        ChipDef(FilterMode.ALL,      R.string.filter_all),
+        ChipDef(FilterMode.MISSED,   R.string.filter_missed),
+        ChipDef(FilterMode.RECEIVED, R.string.filter_received),
+        ChipDef(FilterMode.CONTACTS, R.string.filter_contacts),
+        ChipDef(FilterMode.RECENTS,  R.string.filter_recents),
+    )
     LazyRow(
         contentPadding        = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2158,7 +2158,7 @@ private fun FilterChipRow(current: FilterMode, onSelect: (FilterMode) -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text  = chip.label,
+                    text  = stringResource(chip.labelRes),
                     color = textColor,
                     style = if (sel) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
                             else MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal)
@@ -2173,10 +2173,10 @@ private fun FilterChipRow(current: FilterMode, onSelect: (FilterMode) -> Unit) {
 @Composable
 private fun ReturnToCallBanner(info: ActiveCallInfo, onClick: () -> Unit, onEndCall: () -> Unit) {
     val stateText = when (info.state) {
-        Call.STATE_ACTIVE  -> "Active call"
-        Call.STATE_HOLDING -> "On hold"
-        Call.STATE_DIALING -> "Calling…"
-        else               -> "In call"
+        Call.STATE_ACTIVE  -> stringResource(R.string.active_call)
+        Call.STATE_HOLDING -> stringResource(R.string.on_hold)
+        Call.STATE_DIALING -> stringResource(R.string.calling)
+        else               -> stringResource(R.string.in_call)
     }
     Row(
         modifier = Modifier
@@ -2227,7 +2227,7 @@ private fun ReturnToCallBanner(info: ActiveCallInfo, onClick: () -> Unit, onEndC
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text       = "End Call",
+                text       = stringResource(R.string.end_call),
                 color      = Danger,
                 fontSize   = 14.sp,
                 fontWeight = FontWeight.SemiBold
@@ -2315,7 +2315,7 @@ private fun PixelHomeContent(
                         putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                                  android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                        putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Search contacts…")
+                        putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, context.getString(R.string.voice_search_prompt))
                     }
                 )
             },
@@ -2405,9 +2405,9 @@ private fun PixelFavoritesContent(
                         .clickable { ctx.startActivity(Intent(ctx, com.zeno.dialer.SettingsActivity::class.java)) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary)
+                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings), tint = TextSecondary)
                 }
-                Text("Favorites", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.tab_favorites), color = TextPrimary, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.width(44.dp))
             }
         }
@@ -2415,7 +2415,7 @@ private fun PixelFavoritesContent(
         item {
             Spacer(Modifier.height(10.dp))
             Text(
-                text     = "Pinned",
+                text     = stringResource(R.string.pinned),
                 color    = TextSecondary,
                 style    = MaterialTheme.typography.labelMedium,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -2423,7 +2423,7 @@ private fun PixelFavoritesContent(
             Spacer(Modifier.height(8.dp))
             if (state.pinnedFavorites.isEmpty()) {
                 Text(
-                    text     = "Long-press any contact below to pin them here",
+                    text     = stringResource(R.string.pin_hint),
                     color    = TextHint,
                     style    = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -2440,7 +2440,7 @@ private fun PixelFavoritesContent(
         item {
             Spacer(Modifier.height(12.dp))
             Text(
-                text     = "Suggestions",
+                text     = stringResource(R.string.suggestions),
                 color    = TextSecondary,
                 style    = MaterialTheme.typography.labelMedium,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -2451,7 +2451,7 @@ private fun PixelFavoritesContent(
         if (suggestions.isEmpty()) {
             item {
                 Text(
-                    text     = "No suggestions yet",
+                    text     = stringResource(R.string.no_suggestions),
                     color    = TextHint,
                     style    = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -2546,7 +2546,7 @@ private fun PixelSuggestionRow(
             ) {
                 Icon(
                     imageVector        = Icons.Default.Favorite,
-                    contentDescription = if (isPinned) "Unpin" else "Pin",
+                    contentDescription = if (isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin),
                     tint               = pinTint,
                     modifier           = Modifier.size(15.dp)
                 )
@@ -2563,7 +2563,7 @@ private fun PixelSuggestionRow(
             ) {
                 Icon(
                     imageVector        = Icons.Default.Phone,
-                    contentDescription = "Call",
+                    contentDescription = stringResource(R.string.call),
                     tint               = Accent,
                     modifier           = Modifier.size(15.dp)
                 )
@@ -2598,11 +2598,11 @@ private fun PixelSearchBar(
                 modifier         = Modifier.size(44.dp).clip(CircleShape).clickable { onSettingsClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings), tint = TextSecondary, modifier = Modifier.size(20.dp))
             }
 
             Text(
-                text     = if (displayQuery.isEmpty()) "Search contacts" else displayQuery,
+                text     = if (displayQuery.isEmpty()) stringResource(R.string.search_contacts) else displayQuery,
                 color    = if (displayQuery.isEmpty()) TextSecondary else TextPrimary,
                 style    = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
@@ -2614,14 +2614,14 @@ private fun PixelSearchBar(
                 modifier         = Modifier.size(44.dp).clip(CircleShape).clickable { onVoiceSearch() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Mic, contentDescription = "Voice search", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.voice_search), tint = TextSecondary, modifier = Modifier.size(20.dp))
             }
 
             Box(
                 modifier         = Modifier.size(44.dp).clip(CircleShape).clickable { onContactsOpen() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Contacts, contentDescription = "Contacts", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Contacts, contentDescription = stringResource(R.string.tab_contacts), tint = TextSecondary, modifier = Modifier.size(20.dp))
             }
         }
     }

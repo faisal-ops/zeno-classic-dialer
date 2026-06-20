@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
@@ -145,7 +146,7 @@ private fun InCallHeaderSection(
                 }
                 AsyncImage(
                     model = req,
-                    contentDescription = "Contact photo for $displayName",
+                    contentDescription = null,
                     modifier = Modifier
                         .size(avatarDp)
                         .clip(CircleShape),
@@ -211,7 +212,16 @@ private fun InCallHeaderSection(
                 Spacer(Modifier.width(8.dp))
                 val timerOrState = when {
                     state == Call.STATE_ACTIVE -> elapsedSeconds.toCallDuration()
-                    else -> stateLabel(state)
+                    else -> when (state) {
+                        Call.STATE_RINGING       -> stringResource(R.string.incoming_call)
+                        Call.STATE_DIALING       -> stringResource(R.string.calling)
+                        Call.STATE_CONNECTING    -> stringResource(R.string.connecting)
+                        Call.STATE_ACTIVE        -> stringResource(R.string.active_call)
+                        Call.STATE_HOLDING       -> stringResource(R.string.on_hold)
+                        Call.STATE_DISCONNECTING -> stringResource(R.string.ending)
+                        Call.STATE_DISCONNECTED  -> stringResource(R.string.call_ended)
+                        else -> ""
+                    }
                 }
                 Text(
                     text = timerOrState,
@@ -267,9 +277,9 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
                     svc?.applySpeaker(false)
                     speakerEnabledForRecording = false
                 }
-                Toast.makeText(context, "Could not start recording", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.could_not_start_recording), Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(context, "Recording started — speaker enabled to capture both sides", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.recording_started), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -278,7 +288,7 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (!granted) {
-            Toast.makeText(context, "Microphone permission required for recording", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.mic_permission_required), Toast.LENGTH_SHORT).show()
             return@rememberLauncherForActivityResult
         }
         val i = CallStateHolder.info.value ?: return@rememberLauncherForActivityResult
@@ -427,11 +437,11 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
                             speakerEnabledForRecording = false
                         }
                         if (savedPath != null) {
-                            Toast.makeText(context, "Recording saved", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.recording_saved), Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(
                                 context,
-                                "Recording ended (file too short or error)",
+                                context.getString(R.string.recording_error),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -490,125 +500,125 @@ private fun RingingPanel(
                     .clickable { showQuickReplies = true }
                     .padding(horizontal = 20.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Message,
-                    contentDescription = "Message",
-                    tint = TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Message",
-                    color = TextSecondary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+                             Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Message,
+                        contentDescription = stringResource(R.string.message),
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.message),
+                        color = TextSecondary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp)
-                    .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CallActionButton(
-                        icon = Icons.Default.Call,
-                        backgroundColor = Color(0xFF5A8A1C),
-                        iconColor = Color.White,
-                        accessibilityLabel = "Answer call",
-                        onClick = onAnswer
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text("Answer", color = TextSecondary, fontSize = 13.sp)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CallActionButton(
-                        icon = Icons.Default.CallEnd,
-                        backgroundColor = Color(0xFFC0392B),
-                        iconColor = Color.White,
-                        accessibilityLabel = "Decline call",
-                        onClick = onDecline
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text("Decline", color = TextSecondary, fontSize = 13.sp)
-                }
-            }
-        } else {
-            val prefs = context.getSharedPreferences(AppPreferences.FILE_SETTINGS, android.content.Context.MODE_PRIVATE)
-            val quickReplies = (0..3).map { i ->
-                prefs.getString("${AppPreferences.KEY_QUICK_RESPONSE_PREFIX}$i", null) ?: listOf(
-                    "Can't talk now. What's up?",
-                    "I'll call you right back.",
-                    "I'll call you later.",
-                    "Can't talk now. Call me later?"
-                )[i]
-            }
-            val scroll = rememberScrollState()
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(scroll)
-                        .padding(horizontal = 2.dp)
-                        .padding(top = 12.dp)
-                ) {
-                    quickReplies.forEach { msg ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onQuickReply(msg) }
-                                .padding(vertical = 12.dp, horizontal = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Message,
-                                contentDescription = "Quick reply",
-                                tint = Accent,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(text = msg, color = TextPrimary, fontSize = 15.sp)
-                        }
-                    }
-                }
                 Row(
                     modifier = Modifier
+                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 24.dp, top = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(horizontal = 32.dp)
+                        .padding(bottom = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CallActionButton(
                             icon = Icons.Default.Call,
                             backgroundColor = Color(0xFF5A8A1C),
                             iconColor = Color.White,
-                            accessibilityLabel = "Answer call",
+                            accessibilityLabel = stringResource(R.string.answer),
                             onClick = onAnswer
                         )
                         Spacer(Modifier.height(6.dp))
-                        Text("Answer", color = TextSecondary, fontSize = 13.sp)
+                        Text(stringResource(R.string.answer), color = TextSecondary, fontSize = 13.sp)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CallActionButton(
                             icon = Icons.Default.CallEnd,
                             backgroundColor = Color(0xFFC0392B),
                             iconColor = Color.White,
-                            accessibilityLabel = "Decline call",
+                            accessibilityLabel = stringResource(R.string.decline),
                             onClick = onDecline
                         )
                         Spacer(Modifier.height(6.dp))
-                        Text("Decline", color = TextSecondary, fontSize = 13.sp)
+                        Text(stringResource(R.string.decline), color = TextSecondary, fontSize = 13.sp)
+                    }
+                }
+            } else {
+                val prefs = context.getSharedPreferences(AppPreferences.FILE_SETTINGS, android.content.Context.MODE_PRIVATE)
+                val quickReplies = (0..3).map { i ->
+                    prefs.getString("${AppPreferences.KEY_QUICK_RESPONSE_PREFIX}$i", null) ?: listOf(
+                        "Can't talk now. What's up?",
+                        "I'll call you right back.",
+                        "I'll call you later.",
+                        "Can't talk now. Call me later?"
+                    )[i]
+                }
+                val scroll = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(scroll)
+                            .padding(horizontal = 2.dp)
+                            .padding(top = 12.dp)
+                    ) {
+                        quickReplies.forEach { msg ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onQuickReply(msg) }
+                                    .padding(vertical = 12.dp, horizontal = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Message,
+                                    contentDescription = null,
+                                    tint = Accent,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(text = msg, color = TextPrimary, fontSize = 15.sp)
+                            }
+                        }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 24.dp, top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CallActionButton(
+                                icon = Icons.Default.Call,
+                                backgroundColor = Color(0xFF5A8A1C),
+                                iconColor = Color.White,
+                                accessibilityLabel = stringResource(R.string.answer),
+                                onClick = onAnswer
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(stringResource(R.string.answer), color = TextSecondary, fontSize = 13.sp)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CallActionButton(
+                                icon = Icons.Default.CallEnd,
+                                backgroundColor = Color(0xFFC0392B),
+                                iconColor = Color.White,
+                                accessibilityLabel = stringResource(R.string.decline),
+                                onClick = onDecline
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(stringResource(R.string.decline), color = TextSecondary, fontSize = 13.sp)
+                        }
                     }
                 }
             }
@@ -651,9 +661,9 @@ private fun InCallControlsPanel(
             labelLineHeight = controlLineSp,
             iconLabelGap = controlIconLabelGap,
             expand = expandRows,
-            left = ControlCellDef(Icons.AutoMirrored.Filled.VolumeUp, "Speaker", speakerOn, onToggleSpeaker),
-            middle = ControlCellDef(if (micMuted) Icons.Default.MicOff else Icons.Default.Mic, "Mute", micMuted, onToggleMute),
-            right = ControlCellDef(Icons.Default.Dialpad, "Dial Pad", false, onKeypad),
+            left = ControlCellDef(Icons.AutoMirrored.Filled.VolumeUp, stringResource(R.string.speaker), speakerOn, onToggleSpeaker),
+            middle = ControlCellDef(if (micMuted) Icons.Default.MicOff else Icons.Default.Mic, stringResource(R.string.mute), micMuted, onToggleMute),
+            right = ControlCellDef(Icons.Default.Dialpad, stringResource(R.string.dial_pad), false, onKeypad),
         )
         if (isMC) Spacer(Modifier.height(6.dp))
         else HorizontalDivider(color = Border, thickness = 1.dp)
@@ -664,9 +674,9 @@ private fun InCallControlsPanel(
             labelLineHeight = controlLineSp,
             iconLabelGap = controlIconLabelGap,
             expand = expandRows,
-            left = ControlCellDef(Icons.Default.Pause, if (state == Call.STATE_HOLDING) "Unhold" else "Hold", state == Call.STATE_HOLDING, onHoldToggle),
-            middle = ControlCellDef(Icons.Filled.FiberManualRecord, "Record", recordingActive, onClick = onRecord),
-            right = ControlCellDef(Icons.Default.PersonAdd, "Add a Call", false, onAddCall),
+            left = ControlCellDef(Icons.Default.Pause, if (state == Call.STATE_HOLDING) stringResource(R.string.unhold) else stringResource(R.string.hold), state == Call.STATE_HOLDING, onHoldToggle),
+            middle = ControlCellDef(Icons.Filled.FiberManualRecord, stringResource(R.string.record), recordingActive, onClick = onRecord),
+            right = ControlCellDef(Icons.Default.PersonAdd, stringResource(R.string.add_a_call), false, onAddCall),
         )
     }
 }
@@ -816,7 +826,7 @@ private fun EndCallBar(onEnd: () -> Unit, modifier: Modifier = Modifier) {
                 .fillMaxWidth()
                 .background(BgSurface)
                 .padding(horizontal = 10.dp, vertical = 8.dp)
-                .semantics { contentDescription = "End call" },
+                .semantics { contentDescription = context.getString(R.string.end_call) },
             contentAlignment = Alignment.Center
         ) {
             Row(
@@ -841,7 +851,7 @@ private fun EndCallBar(onEnd: () -> Unit, modifier: Modifier = Modifier) {
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    text = "End",
+                    text = stringResource(R.string.end),
                     color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
@@ -853,7 +863,7 @@ private fun EndCallBar(onEnd: () -> Unit, modifier: Modifier = Modifier) {
             modifier = modifier
                 .fillMaxWidth()
                 .background(Color(0xFFC0392B))
-                .semantics { contentDescription = "End call" }
+                .semantics { contentDescription = context.getString(R.string.end_call) }
                 .clickable { onEnd() }
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -866,7 +876,7 @@ private fun EndCallBar(onEnd: () -> Unit, modifier: Modifier = Modifier) {
                 modifier = Modifier.size(20.dp)
             )
             Spacer(Modifier.width(8.dp))
-            Text(text = "End", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(text = stringResource(R.string.end), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -896,7 +906,16 @@ private fun SecondaryCallBanner(info: ActiveCallInfo, onSwitch: () -> Unit) {
                 overflow   = TextOverflow.Ellipsis
             )
             Text(
-                text     = stateLabel(info.state),
+                text     = when (info.state) {
+                    Call.STATE_RINGING       -> stringResource(R.string.incoming_call)
+                    Call.STATE_DIALING       -> stringResource(R.string.calling)
+                    Call.STATE_CONNECTING    -> stringResource(R.string.connecting)
+                    Call.STATE_ACTIVE        -> stringResource(R.string.active_call)
+                    Call.STATE_HOLDING       -> stringResource(R.string.on_hold)
+                    Call.STATE_DISCONNECTING -> stringResource(R.string.ending)
+                    Call.STATE_DISCONNECTED  -> stringResource(R.string.call_ended)
+                    else -> ""
+                },
                 color    = stateColor(info.state),
                 fontSize = 12.sp
             )
@@ -912,7 +931,7 @@ private fun SecondaryCallBanner(info: ActiveCallInfo, onSwitch: () -> Unit) {
         ) {
             Icon(
                 imageVector        = Icons.Default.SwapCalls,
-                contentDescription = "Switch call",
+                contentDescription = stringResource(R.string.switch_call),
                 tint               = Accent,
                 modifier           = Modifier.size(19.dp)
             )
@@ -1071,7 +1090,7 @@ private fun PixelInCallContent(
             )
         } else {
             Text(
-                text       = stateLabel(state),
+                text       = StateLabel(state),
                 color      = stateColor(state),
                 fontSize   = 13.sp,
                 fontWeight = FontWeight.Medium,
@@ -1103,13 +1122,13 @@ private fun PixelInCallContent(
                         ) {
                             Icon(
                                 imageVector        = Icons.AutoMirrored.Filled.Message,
-                                contentDescription = "Message",
+                                contentDescription = stringResource(R.string.message),
                                 tint               = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier           = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text       = "Message",
+                                text       = stringResource(R.string.message),
                                 color      = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize   = 14.sp,
                                 fontWeight = FontWeight.Medium
@@ -1128,22 +1147,22 @@ private fun PixelInCallContent(
                                     icon            = Icons.Default.CallEnd,
                                     backgroundColor = Color(0xFFCC4444),
                                     iconColor       = Color.White,
-                                    accessibilityLabel = "Decline call",
+                                    accessibilityLabel = stringResource(R.string.decline),
                                     onClick         = { CallStateHolder.reject() }
                                 )
                                 Spacer(Modifier.height(8.dp))
-                                Text("Decline", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                Text(stringResource(R.string.decline), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CallActionButton(
                                     icon            = Icons.Default.Call,
                                     backgroundColor = Color(0xFF4CAF50),
                                     iconColor       = Color.White,
-                                    accessibilityLabel = "Answer call",
+                                    accessibilityLabel = stringResource(R.string.answer),
                                     onClick         = { CallStateHolder.answer() }
                                 )
                                 Spacer(Modifier.height(8.dp))
-                                Text("Answer", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                                Text(stringResource(R.string.answer), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                             }
                         }
                     } else {
@@ -1188,22 +1207,22 @@ private fun PixelInCallContent(
                                         icon            = Icons.Default.CallEnd,
                                         backgroundColor = Color(0xFFCC4444),
                                         iconColor       = Color.White,
-                                        accessibilityLabel = "Decline call",
+                                        accessibilityLabel = stringResource(R.string.decline),
                                         onClick         = { CallStateHolder.reject() }
                                     )
                                     Spacer(Modifier.height(6.dp))
-                                    Text("Decline", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                    Text(stringResource(R.string.decline), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                                 }
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     CallActionButton(
                                         icon            = Icons.Default.Call,
                                         backgroundColor = Color(0xFF4CAF50),
                                         iconColor       = Color.White,
-                                        accessibilityLabel = "Answer call",
+                                        accessibilityLabel = stringResource(R.string.answer),
                                         onClick         = { CallStateHolder.answer() }
                                     )
                                     Spacer(Modifier.height(6.dp))
-                                    Text("Answer", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                    Text(stringResource(R.string.answer), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                                 }
                             }
                         }
@@ -1224,14 +1243,14 @@ private fun PixelInCallContent(
                     ) {
                         PixelSmallActionButton(
                             icon    = if (micMuted) Icons.Default.MicOff else Icons.Default.Mic,
-                            label   = "Mute",
+                            label   = stringResource(R.string.mute),
                             color   = if (micMuted) Color(0xFFFFAA00) else TextSecondary,
                             bgColor = if (micMuted) Color(0xFF332200) else BgElevated,
                             onClick = onToggleMute
                         )
                         PixelSmallActionButton(
                             icon    = Icons.Default.Dialpad,
-                            label   = "Keypad",
+                            label   = stringResource(R.string.dial_pad),
                             color   = TextSecondary,
                             onClick = {
                                 context.startActivity(
@@ -1244,7 +1263,7 @@ private fun PixelInCallContent(
                         )
                         PixelSmallActionButton(
                             icon    = Icons.AutoMirrored.Filled.VolumeUp,
-                            label   = "Speaker",
+                            label   = stringResource(R.string.speaker),
                             color   = if (speakerOn) Color(0xFF66CCFF) else TextSecondary,
                             bgColor = if (speakerOn) Color(0xFF1A2A3A) else BgElevated,
                             onClick = onToggleSpeaker
@@ -1262,7 +1281,7 @@ private fun PixelInCallContent(
                     ) {
                         PixelSmallActionButton(
                             icon    = Icons.Default.PersonAdd,
-                            label   = "Add Call",
+                            label   = stringResource(R.string.add_a_call),
                             color   = TextSecondary,
                             onClick = {
                                 CallStateHolder.hold()
@@ -1276,14 +1295,14 @@ private fun PixelInCallContent(
                         )
                         PixelSmallActionButton(
                             icon    = Icons.Default.CallEnd,
-                            label   = "End Call",
+                            label   = stringResource(R.string.end_call),
                             color   = Color.White,
                             bgColor = Color(0xFFCC4444),
                             onClick = { CallStateHolder.hangup() }
                         )
                         PixelSmallActionButton(
                             icon    = Icons.Default.Pause,
-                            label   = if (state == Call.STATE_HOLDING) "Unhold" else "Hold",
+                            label   = if (state == Call.STATE_HOLDING) stringResource(R.string.unhold) else stringResource(R.string.hold),
                             color   = if (state == Call.STATE_HOLDING) Color(0xFFFFDD00) else TextSecondary,
                             bgColor = if (state == Call.STATE_HOLDING) Color(0xFF2A2200) else BgElevated,
                             onClick = {
@@ -1338,14 +1357,15 @@ private fun PixelSmallActionButton(
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-private fun stateLabel(state: Int): String = when (state) {
-    Call.STATE_RINGING       -> "Incoming call"
-    Call.STATE_DIALING       -> "Calling..."
-    Call.STATE_CONNECTING    -> "Connecting..."
-    Call.STATE_ACTIVE        -> "Active"
-    Call.STATE_HOLDING       -> "On Hold"
-    Call.STATE_DISCONNECTING -> "Ending..."
-    Call.STATE_DISCONNECTED  -> "Call Ended"
+@Composable
+private fun StateLabel(state: Int): String = when (state) {
+    Call.STATE_RINGING       -> stringResource(R.string.incoming_call)
+    Call.STATE_DIALING       -> stringResource(R.string.calling)
+    Call.STATE_CONNECTING    -> stringResource(R.string.connecting)
+    Call.STATE_ACTIVE        -> stringResource(R.string.active_call)
+    Call.STATE_HOLDING       -> stringResource(R.string.on_hold)
+    Call.STATE_DISCONNECTING -> stringResource(R.string.ending)
+    Call.STATE_DISCONNECTED  -> stringResource(R.string.call_ended)
     else -> ""
 }
 

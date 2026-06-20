@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import com.zeno.dialer.data.Contact
 import com.zeno.dialer.data.RecentsRepo
 import com.zeno.dialer.ui.Accent
@@ -142,7 +143,7 @@ private fun CallHistoryDetailScreen(
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = TextPrimary)
             }
 
             Spacer(Modifier.width(4.dp))
@@ -161,7 +162,7 @@ private fun CallHistoryDetailScreen(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Mobile • $number",
+                    text = "${stringResource(R.string.mobile)} • $number",
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -174,14 +175,14 @@ private fun CallHistoryDetailScreen(
                     .clickable { /* overflow menu placeholder */ },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.MoreVert, contentDescription = "More", tint = TextSecondary)
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more), tint = TextSecondary)
             }
         }
 
         // ── Call history entries ─────────────────────────────────────────
         if (allItems.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No history", color = TextSecondary)
+                Text(stringResource(R.string.no_history), color = TextSecondary)
             }
         } else {
             CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
@@ -222,7 +223,7 @@ private fun CallHistoryDetailScreen(
 
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = callTypeLabel(item.callType),
+                                    text = CallTypeLabel(item.callType),
                                     color = TextPrimary,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium
@@ -259,7 +260,7 @@ private fun CallHistoryDetailScreen(
             ) {
                 Icon(
                     Icons.Default.Phone,
-                    contentDescription = "Call",
+                    contentDescription = stringResource(R.string.call),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -270,7 +271,7 @@ private fun CallHistoryDetailScreen(
             // Message button
             ActionButton(
                 icon = Icons.AutoMirrored.Filled.Message,
-                label = "Message",
+                label = stringResource(R.string.message),
                 onClick = onMessage
             )
         }
@@ -311,18 +312,19 @@ private fun callTypeIcon(type: Int) = when (type) {
     else                         -> Icons.AutoMirrored.Filled.PhoneCallback to Color(0xFF8E8E93)
 }
 
-private fun callTypeLabel(type: Int) = when (type) {
-    CallLog.Calls.MISSED_TYPE    -> "Missed call"
-    CallLog.Calls.INCOMING_TYPE  -> "Incoming call"
-    CallLog.Calls.OUTGOING_TYPE  -> "Outgoing call"
-    CallLog.Calls.BLOCKED_TYPE   -> "Blocked call"
-    CallLog.Calls.REJECTED_TYPE  -> "Rejected call"
-    else                         -> "Call"
+@Composable
+private fun CallTypeLabel(type: Int) = when (type) {
+    CallLog.Calls.MISSED_TYPE    -> stringResource(R.string.filter_missed)
+    CallLog.Calls.INCOMING_TYPE  -> stringResource(R.string.filter_received)
+    CallLog.Calls.OUTGOING_TYPE  -> stringResource(R.string.tab_calls)
+    CallLog.Calls.BLOCKED_TYPE   -> stringResource(R.string.blocked_numbers)
+    else                         -> stringResource(R.string.call)
 }
 
 private fun formatTime(timestamp: Long): String =
     SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(timestamp))
 
+@Composable
 private fun Long.toDateLabel(): String {
     val cal = Calendar.getInstance()
     val now = Calendar.getInstance()
@@ -330,10 +332,10 @@ private fun Long.toDateLabel(): String {
 
     return when {
         cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
-        cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR) -> "Today"
+        cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR) -> stringResource(R.string.today)
 
         cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
-        cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR) - 1 -> "Yesterday"
+        cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR) - 1 -> stringResource(R.string.yesterday)
 
         else -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(this))
     }

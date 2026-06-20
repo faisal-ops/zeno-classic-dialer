@@ -45,6 +45,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import androidx.compose.ui.res.stringResource
 import com.zeno.dialer.data.Contact
 import com.zeno.dialer.ui.DialerScreen
 import com.zeno.dialer.ui.DialerTab
@@ -424,7 +425,7 @@ class MainActivity : ComponentActivity() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            Toast.makeText(this, "Phone permission required", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.phone_permission_required), Toast.LENGTH_SHORT).show()
             requestRequiredPermissions()
             return
         }
@@ -444,7 +445,7 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Toast.makeText(
                 this,
-                "Telecom failed (${e.javaClass.simpleName}), trying ACTION_CALL",
+                getString(R.string.telecom_failed, e.javaClass.simpleName),
                 Toast.LENGTH_LONG
             ).show()
             tryActionCallFallback(uri)
@@ -461,7 +462,7 @@ class MainActivity : ComponentActivity() {
         } catch (fallbackError: Exception) {
             Toast.makeText(
                 this,
-                "Fallback failed: ${fallbackError.message}",
+                getString(R.string.fallback_failed, fallbackError.message),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -483,7 +484,7 @@ class MainActivity : ComponentActivity() {
             val telUri = Uri.fromParts("tel", target, null)
             startActivity(Intent(ContactsContract.Intents.SHOW_OR_CREATE_CONTACT, telUri))
         } catch (e: Exception) {
-            Toast.makeText(this, "Could not open contact: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.could_not_open_contact, e.message), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -610,15 +611,13 @@ class MainActivity : ComponentActivity() {
             },
             title = {
                 androidx.compose.material3.Text(
-                    text = "Enable toolbar buttons",
+                    text = stringResource(R.string.enable_toolbar_buttons),
                     style = androidx.compose.material3.MaterialTheme.typography.headlineSmall
                 )
             },
             text = {
                 androidx.compose.material3.Text(
-                    text = "Allow Zeno Classic Dialer to use the Call and End " +
-                           "hardware buttons on your keyboard toolbar.\n\n" +
-                           "Find \"Zeno Classic Dialer\" in the list and enable it.",
+                    text = stringResource(R.string.accessibility_prompt_msg),
                     style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
                 )
             },
@@ -629,7 +628,7 @@ class MainActivity : ComponentActivity() {
                         Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
                     )
                 }) {
-                    androidx.compose.material3.Text("Open Settings")
+                    androidx.compose.material3.Text(stringResource(R.string.open_settings))
                 }
             },
             dismissButton = {
@@ -637,7 +636,7 @@ class MainActivity : ComponentActivity() {
                     showAccessibilityPrompt.value = false
                     launchRolePickerIfNeeded()
                 }) {
-                    androidx.compose.material3.Text("Not now")
+                    androidx.compose.material3.Text(stringResource(R.string.not_now))
                 }
             }
         )
@@ -686,7 +685,7 @@ class MainActivity : ComponentActivity() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             androidx.compose.material3.Text(
-                text = "Tap to set as default phone app",
+                text = stringResource(R.string.set_as_default_hint),
                 color = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
                 style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                 modifier = Modifier.weight(1f)

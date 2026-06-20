@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Zeno Classic Dialer</string>
+    <string name="accessibility_description">Hiermee kunnen de Bel- en Ophangen-knoppen op de werkbalk nummers kiezen en de kiezer sluiten.</string>
+
+    <!-- Tabs -->
+    <string name="tab_calls">Oproepen</string>
+    <string name="tab_contacts">Contacten</string>
+    <string name="tab_dial_pad">Toetsenbord</string>
+    <string name="tab_favorites">Favorieten</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_keypad">Toetsen</string>
+
+    <!-- Main UI -->
+    <string name="search_contacts">Contacten zoeken</string>
+    <string name="no_contacts">Geen contacten</string>
+    <string name="no_history">Geen geschiedenis</string>
+    <string name="no_results">Geen resultaten</string>
+    <string name="recent_empty_hint">Je recente oproepen en contacten verschijnen hier</string>
+    <string name="clear">Wissen</string>
+    <string name="cancel">Annuleren</string>
+    <string name="delete">Verwijderen</string>
+    <string name="ok">OK</string>
+    <string name="pasted">Geplakt</string>
+    <string name="nothing_to_paste">Niets om te plakken</string>
+    <string name="copied">Gekopieerd</string>
+    <string name="menu">Menu</string>
+    <string name="voice_search">Spraakgestuurd zoeken</string>
+    <string name="voice_search_prompt">Contacten zoeken…</string>
+
+    <!-- Call Log / History -->
+    <string name="filter_all">Alle</string>
+    <string name="filter_missed">Gemist</string>
+    <string name="filter_received">Ontvangen</string>
+    <string name="filter_contacts">Contacten</string>
+    <string name="filter_recents">Recent</string>
+    <string name="today">Vandaag</string>
+    <string name="yesterday">Gisteren</string>
+    <string name="just_now">Zojuist</string>
+    <string name="min_ago">%1$d min geleden</string>
+    <string name="hr_ago">%1$d uur geleden</string>
+    <string name="days_ago">%1$d dagen geleden</string>
+    <string name="m_ago">%1$dm geleden</string>
+    <string name="h_ago">%1$du geleden</string>
+    <string name="d_ago">%1$dd geleden</string>
+
+    <!-- Call Actions -->
+    <string name="call">Bellen</string>
+    <string name="message">Bericht</string>
+    <string name="history">Geschiedenis</string>
+    <string name="edit_contact">Contact bewerken</string>
+    <string name="add_to_contacts">Toevoegen aan contacten</string>
+    <string name="add_to_favorites">Toevoegen aan favorieten</string>
+    <string name="remove_from_blocked">Verwijderen uit blokkeerlijst</string>
+    <string name="add_to_blocked">Toevoegen aan blokkeerlijst</string>
+    <string name="copy_number">Nummer kopiëren</string>
+    <string name="view_call_history">Oproepgeschiedenis bekijken</string>
+    <string name="delete_from_log">Verwijderen uit geschiedenis</string>
+    <string name="delete_log_confirm_title">Oproeplijst wissen?</string>
+    <string name="delete_log_confirm_msg">Alle oproepgeschiedenis voor %1$s wordt permanent verwijderd.</string>
+    <string name="see_more_in_history">Bekijk meer in geschiedenis</string>
+
+    <!-- Favorites -->
+    <string name="pinned">Vastgezet</string>
+    <string name="suggestions">Suggesties</string>
+    <string name="no_suggestions">Nog geen suggesties</string>
+    <string name="pin_hint">Houd een contact hieronder lang ingedrukt om het hier vast te zetten</string>
+    <string name="pin">Vastzetten</string>
+    <string name="unpin">Losmaken</string>
+
+    <!-- Dialpad -->
+    <string name="enter_number">Nummer invoeren</string>
+    <string name="add_contact">Contact toevoegen</string>
+    <string name="backspace">Backspace</string>
+    <string name="dialpad_paste">Plakken</string>
+    <string name="dialpad_paste_hint">Vanaf klembord</string>
+    <string name="dialpad_copy_hint">Nummer in veld</string>
+    <string name="dialpad_number_bar_a11y">Nummerinvoer; lang indrukken voor plakken of kopiëren</string>
+
+    <!-- In-Call -->
+    <string name="answer">Beantwoorden</string>
+    <string name="decline">Weigeren</string>
+    <string name="end">Ophangen</string>
+    <string name="end_call">Ophangen</string>
+    <string name="speaker">Luidspreker</string>
+    <string name="mute">Dempen</string>
+    <string name="dial_pad">Toetsenbord</string>
+    <string name="hold">Wachtstand</string>
+    <string name="unhold">Hervatten</string>
+    <string name="record">Opnemen</string>
+    <string name="add_a_call">Gesprek toevoegen</string>
+    <string name="active_call">Actief gesprek</string>
+    <string name="on_hold">In de wacht</string>
+    <string name="calling">Bellen…</string>
+    <string name="in_call">In gesprek</string>
+    <string name="incoming_call">Inkomende oproep</string>
+    <string name="connecting">Verbinden…</string>
+    <string name="call_ended">Gesprek beëindigd</string>
+    <string name="ending">Beëindigen…</string>
+    <string name="switch_call">Wisselen</string>
+    <string name="recording_started">Opname gestart — luidspreker ingeschakeld om beide kanten op te nemen</string>
+    <string name="recording_saved">Opname opgeslagen</string>
+    <string name="recording_error">Opname beëindigd (bestand te kort of fout)</string>
+    <string name="could_not_start_recording">Kon opname niet starten</string>
+    <string name="mic_permission_required">Microfoonmachtiging vereist voor opname</string>
+    <string name="sms_permission_required">Sms-machtiging vereist voor snelle reactie</string>
+    <string name="message_sent">Bericht verzonden</string>
+    <string name="quick_reply_templates">Sjablonen voor snelle reacties</string>
+    <string name="write_your_own">Zelf schrijven…</string>
+    <string name="send_message_to">Bericht sturen naar</string>
+
+    <!-- Settings -->
+    <string name="settings">Instellingen</string>
+    <string name="call_assist">Oproephulp</string>
+    <string name="caller_id_spam">Beller-ID &amp; spam</string>
+    <string name="general">Algemeen</string>
+    <string name="accessibility">Toegankelijkheid</string>
+    <string name="assisted_dialing">Geassisteerd kiezen</string>
+    <string name="blocked_numbers">Geblokkeerde nummers</string>
+    <string name="calls">Oproepen</string>
+    <string name="display_options">Schermopties</string>
+    <string name="quick_reply_templates_title">Sjablonen voor snelle reacties</string>
+    <string name="sounds_vibration">Geluid en trillen</string>
+    <string name="voicemail">Voicemail</string>
+    <string name="contact_ringtones">Beltonen voor contacten</string>
+    <string name="calling_card">Visitekaartje</string>
+    <string name="advanced">Geavanceerd</string>
+    <string name="caller_id_announcement">Beller-ID aankondiging</string>
+    <string name="flip_to_silence">Omdraaien voor stilte</string>
+    <string name="about">Over</string>
+    <string name="about_app">Over Zeno Classic Dialer</string>
+    <string name="version_label">Versie %1$s</string>
+    <string name="clear_history">Oproeplijst wissen</string>
+    <string name="clear_history_confirm_title">Oproeplijst wissen?</string>
+    <string name="clear_history_confirm_msg">Alle oproeplijstvermeldingen worden permanent verwijderd.</string>
+    <string name="see_caller_spam_id">Beller- en spam-ID bekijken</string>
+    <string name="see_caller_spam_id_desc">Bedrijfs- en spamnummers identificeren</string>
+    <string name="filter_spam">Spamoproepen filteren</string>
+    <string name="filter_spam_desc">Voorkom dat verdachte spamoproepen je storen</string>
+    <string name="caller_id_spam_info">Zeno Classic Dialer zal proberen nuttige informatie te tonen wanneer je belt of wordt gebeld, zoals een naam voor een nummer dat niet in je contacten staat of een waarschuwing wanneer een inkomende oproep verdacht wordt van spam.</string>
+    <string name="default_home_country">Standaard thuisland</string>
+    <string name="auto_detected">Automatisch gedetecteerd</string>
+    <string name="assisted_dialing_info">Geassisteerd kiezen voorspelt en voegt een landcode toe wanneer je belt terwijl je in het buitenland bent.</string>
+    <string name="send_responses_instantly">Snelle reacties direct verzenden</string>
+    <string name="send_responses_instantly_desc">Wanneer uitgeschakeld, wordt je sms-app geopend met vooraf ingevulde tekst</string>
+    <string name="appearance">Uiterlijk</string>
+    <string name="choose_theme">Thema kiezen</string>
+    <string name="controls">Bediening</string>
+    <string name="keep_portrait">Staande modus behouden bij oproepen</string>
+    <string name="keep_portrait_desc">Voorkomt onbedoeld automatisch draaien tijdens een gesprek</string>
+    <string name="flip_to_silence_desc">Om een inkomende oproep stil te zetten, leg je het toestel met het scherm naar beneden op een vlakke ondergrond</string>
+    <string name="announce_caller_id">Beller-ID aankondigen</string>
+    <string name="never">Nooit</string>
+    <string name="always">Altijd</string>
+    <string name="headset_only">Alleen bij gebruik van een headset</string>
+    <string name="caller_id_announcement_info">De naam en het nummer van de beller worden hardop voorgelezen bij inkomende oproepen.</string>
+    <string name="notifications">Meldingen</string>
+    <string name="visual_voicemail">Visuele voicemail</string>
+    <string name="visual_voicemail_desc">De provider ondersteunt visuele voicemail mogelijk niet</string>
+    <string name="advanced_settings">Geavanceerde instellingen</string>
+    <string name="contact_ringtones_desc">Voeg een aangepaste beltoon toe aan individuele contacten om te herkennen wie er belt. Ga naar Instellingen om de standaardbeltoon voor dit toestel te beheren.</string>
+    <string name="add_contact_ringtone">Beltoon voor contact toevoegen</string>
+    <string name="your_calling_card">Jouw visitekaartje</string>
+    <string name="your_calling_card_desc">Hoe je voor anderen verschijnt bij het bellen of gebeld worden</string>
+    <string name="create">Maken</string>
+    <string name="contact_calling_card">Visitekaartje van contact</string>
+    <string name="contact_calling_card_desc">Hoe je de naam en afbeelding van je contactpersoon ziet wanneer ze bellen</string>
+    <string name="back">Terug</string>
+    <string name="more">Meer</string>
+    <string name="mobile">Mobiel</string>
+    <string name="work">Werk</string>
+
+    <!-- Permissions / Prompts -->
+    <string name="phone_permission_required">Telefoonmachtiging vereist</string>
+    <string name="telecom_failed">Telecom mislukt (%1$s), probeert ACTION_CALL</string>
+    <string name="fallback_failed">Fallback mislukt: %1$s</string>
+    <string name="could_not_open_contact">Kon contact niet openen: %1$s</string>
+    <string name="enable_toolbar_buttons">Werkbalkknoppen inschakelen</string>
+    <string name="accessibility_prompt_msg">Sta Zeno Classic Dialer toe om de Bel- en Ophangen-knoppen op je toetsenbord-werkbalk te gebruiken.\n\nZoek \"Zeno Classic Dialer\" in de lijst en schakel het in.</string>
+    <string name="open_settings">Instellingen openen</string>
+    <string name="not_now">Niet nu</string>
+    <string name="set_as_default_hint">Tik om in te stellen als standaard telefoon-app</string>
+    <string name="theme_original_classic">Origineel Klassiek</string>
+    <string name="theme_modern_classic">Modern Klassiek</string>
+    <string name="theme_pixel">Pixel</string>
+    <string name="active_call_channel_desc">Toont de lopende oproep en snelle bedieningselementen</string>
+    <string name="incoming_calls_channel_name">Inkomende oproepen</string>
+    <string name="incoming_calls_channel_desc">Heads-up melding voor inkomende oproepen</string>
+    <string name="failed_to_send_message">Bericht verzenden mislukt</string>
+</resources>

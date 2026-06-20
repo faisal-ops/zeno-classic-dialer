@@ -100,10 +100,10 @@ class MyInCallService : InCallService() {
         notifManager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ACTIVE,
-                "Active call",
+                getString(R.string.active_call),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows the ongoing call and quick controls"
+                description = getString(R.string.active_call_channel_desc)
                 setShowBadge(false)
                 setSound(null, null)
                 enableVibration(false)
@@ -113,10 +113,10 @@ class MyInCallService : InCallService() {
         notifManager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_INCOMING,
-                "Incoming calls",
+                getString(R.string.incoming_calls_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Heads-up notification for incoming calls"
+                description = getString(R.string.incoming_calls_channel_desc)
                 setShowBadge(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 setSound(
@@ -204,11 +204,11 @@ class MyInCallService : InCallService() {
         }
 
         val stateText = when (info.state) {
-            Call.STATE_ACTIVE     -> "Active call"
-            Call.STATE_HOLDING    -> "Call on hold"
-            Call.STATE_DIALING    -> "Calling…"
-            Call.STATE_CONNECTING -> "Connecting…"
-            else                  -> "Call"
+            Call.STATE_ACTIVE     -> getString(R.string.active_call)
+            Call.STATE_HOLDING    -> getString(R.string.on_hold)
+            Call.STATE_DIALING    -> getString(R.string.calling)
+            Call.STATE_CONNECTING -> getString(R.string.connecting)
+            else                  -> getString(R.string.tab_calls)
         }
 
         val hangupIntent = PendingIntent.getBroadcast(
@@ -230,7 +230,7 @@ class MyInCallService : InCallService() {
             .addAction(
                 Notification.Action.Builder(
                     Icon.createWithResource(this, R.drawable.ic_notification_call),
-                    "End call",
+                    getString(R.string.end_call),
                     hangupIntent
                 ).build()
             )
@@ -257,7 +257,7 @@ class MyInCallService : InCallService() {
         val b = Notification.Builder(this, channel)
             .setSmallIcon(R.drawable.ic_notification_call)
             .setContentTitle(info.displayName)
-            .setContentText("Incoming call")
+            .setContentText(getString(R.string.incoming_call))
             .setContentIntent(fullScreenIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -267,14 +267,14 @@ class MyInCallService : InCallService() {
             .addAction(
                 Notification.Action.Builder(
                     Icon.createWithResource(this, R.drawable.ic_notification_call),
-                    "Decline",
+                    getString(R.string.decline),
                     declineIntent
                 ).build()
             )
             .addAction(
                 Notification.Action.Builder(
                     Icon.createWithResource(this, R.drawable.ic_notification_call),
-                    "Answer",
+                    getString(R.string.answer),
                     answerIntent
                 ).build()
             )

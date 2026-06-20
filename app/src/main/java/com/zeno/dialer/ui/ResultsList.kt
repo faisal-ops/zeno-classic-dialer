@@ -99,6 +99,8 @@ import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.res.stringResource
+import com.zeno.dialer.R
 import com.zeno.dialer.ui.AccentGreen
 import com.zeno.dialer.data.Contact
 import com.zeno.dialer.data.RecentsRepo
@@ -122,7 +124,7 @@ private val ClassicSheetTextMuted = Color(0xFF626262)
 // ── Row types ────────────────────────────────────────────────────────────────
 
 private sealed class ListRow {
-    data class DateHeader(val label: String)              : ListRow()
+    data class DateHeader(val timestamp: Long)            : ListRow()
     data class SectionLabel(val title: String)            : ListRow()
     data class Item(val contact: Contact, val idx: Int)   : ListRow()
 }
@@ -137,15 +139,23 @@ private fun buildRows(results: List<Contact>): List<ListRow> {
     for (i in results.indices) {
         val c = results[i]
         if (c.isRecent) {
-            val label = c.lastCallTime.toDateLabel(today, yesterday)
+            val label = c.lastCallTime.toDateLabelSimple(today, yesterday)
             if (label != lastDateLabel) {
-                rows.add(ListRow.DateHeader(label))
+                rows.add(ListRow.DateHeader(c.lastCallTime))
                 lastDateLabel = label
             }
         }
         rows.add(ListRow.Item(c, i))
     }
     return rows
+}
+
+private fun Long.toDateLabelSimple(todayStart: Long, yesterdayStart: Long): String {
+    return when {
+        this >= todayStart     -> "Today"
+        this >= yesterdayStart -> "Yesterday"
+        else -> SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(Date(this))
+    }
 }
 
 /** Maps LazyColumn item index → Calls/results row index (headers advance index only). */
@@ -334,7 +344,7 @@ fun ResultsList(
                     when (row) {
                         // Headers are stateless separators — use index to guarantee uniqueness
                         // when fuzzy-sorted results produce the same date label at multiple positions
-                        is ListRow.DateHeader -> "dh_${index}_${row.label}"
+                        is ListRow.DateHeader -> "dh_${index}_${row.timestamp}"
                         is ListRow.SectionLabel -> "sl_${index}_${row.title}"
                         is ListRow.Item -> "it_${row.contact.id}_${row.contact.number}"
                     }
@@ -348,7 +358,7 @@ fun ResultsList(
                 }
             ) { _, row ->
                 when (row) {
-                    is ListRow.DateHeader -> DateHeaderRow(label = row.label)
+                    is ListRow.DateHeader -> DateHeaderRow(timestamp = row.timestamp)
                     is ListRow.SectionLabel -> SectionLabelRow(title = row.title)
                     is ListRow.Item -> {
                         val c = row.contact
@@ -477,7 +487,7 @@ fun ResultsList(
             // Options — BB-style flat list; primary “Call” in accent blue
             SheetOption(
                 icon  = Icons.Default.Phone,
-                label = "Call",
+                label = stringResource(R.string.call),
                 tint  = AccentGreen
             ) {
                 onCallNumber(contact.number)
@@ -487,7 +497,7 @@ fun ResultsList(
             if (contact.id > 0L) {
                 SheetOption(
                     icon  = Icons.Default.Edit,
-                    label = "Edit contact"
+                    label = stringResource(R.string.edit_contact)
                 ) {
                     context.startActivity(
                         Intent(Intent.ACTION_EDIT).apply {
@@ -501,7 +511,7 @@ fun ResultsList(
             } else {
                 SheetOption(
                     icon  = Icons.Default.PersonAdd,
-                    label = "Add to contacts"
+                    label = stringResource(R.string.add_to_contacts)
                 ) {
                     context.startActivity(
                         Intent(Intent.ACTION_INSERT).apply {
@@ -516,7 +526,7 @@ fun ResultsList(
 
             SheetOption(
                 icon  = Icons.Default.Favorite,
-                label = "Add to favorites"
+                label = stringResource(R.string.add_to_favorites)
             ) {
                 onAddFavorite(contact)
                 dismissSheet()
@@ -524,7 +534,7 @@ fun ResultsList(
 
             SheetOption(
                 icon  = Icons.Default.Block,
-                label = if (isBlocked(contact)) "Remove from blocked list" else "Add to blocked list"
+                label = if (isBlocked(contact)) stringResource(R.string.remove_from_blocked) else stringResource(R.string.add_to_blocked)
             ) {
                 onToggleBlocked(contact)
                 dismissSheet()
@@ -532,7 +542,7 @@ fun ResultsList(
 
             SheetOption(
                 icon  = Icons.Default.ContentCopy,
-                label = "Copy number"
+                label = stringResource(R.string.copy_number)
             ) {
                 val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 cm.setPrimaryClip(ClipData.newPlainText("phone", contact.number))
@@ -542,7 +552,7 @@ fun ResultsList(
             if (contact.isRecent) {
                 SheetOption(
                     icon  = Icons.Default.History,
-                    label = "View call history"
+                    label = stringResource(R.string.view_call_history)
                 ) {
                     context.startActivity(
                         Intent(context, CallHistoryDetailActivity::class.java).apply {
@@ -557,7 +567,7 @@ fun ResultsList(
 
             SheetOption(
                 icon  = Icons.Default.Delete,
-                label = "Delete from log history",
+                label = stringResource(R.string.delete_from_log),
                 tint  = if (isThemedSheet) Danger else Color(0xFFCC4444)
             ) {
                 showDeleteConfirm = true
@@ -591,7 +601,7 @@ fun ResultsList(
             runCatching {
                 SmsManager.getDefault().sendTextMessage(contact.number, null, msg, null, null)
             }.onSuccess {
-                Toast.makeText(context, "Message sent", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.message_sent), Toast.LENGTH_SHORT).show()
             }.onFailure {
                 // Permission/SMS provider failures should gracefully fall back to composer.
                 openSmsComposer(prefill = msg)
@@ -637,7 +647,7 @@ fun ResultsList(
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text       = "Send message to",
+                            text       = stringResource(R.string.send_message_to),
                             color      = TextSecondary,
                             style      = MaterialTheme.typography.bodySmall
                         )
@@ -655,7 +665,7 @@ fun ResultsList(
                 HorizontalDivider(color = Border)
 
                 Text(
-                    text = "Quick reply templates",
+                    text = stringResource(R.string.quick_reply_templates),
                     color = TextSecondary,
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
@@ -704,7 +714,7 @@ fun ResultsList(
                     )
                     Spacer(Modifier.width(14.dp))
                     Text(
-                        text  = "Write your own…",
+                        text  = stringResource(R.string.write_your_own),
                         color = TextSecondary,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -734,14 +744,14 @@ fun ResultsList(
                         .widthIn(max = 420.dp)
                 ) {
                     Text(
-                        text = "Delete call log?",
+                        text = stringResource(R.string.delete_log_confirm_title),
                         color = TextPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        text = "All call history for $number will be permanently removed.",
+                        text = stringResource(R.string.delete_log_confirm_msg, number),
                         color = TextSecondary,
                         fontSize = 15.sp
                     )
@@ -751,7 +761,7 @@ fun ResultsList(
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { showDeleteConfirm = false }) {
-                            Text("Cancel", color = AccentGreen, fontSize = 16.sp)
+                            Text(stringResource(R.string.cancel), color = AccentGreen, fontSize = 16.sp)
                         }
                         Spacer(Modifier.width(10.dp))
                         TextButton(
@@ -761,7 +771,7 @@ fun ResultsList(
                                 onDelete(number)
                             }
                         ) {
-                            Text("Delete", color = if (IsModernClassic || IsPixel) Danger else Color(0xFFCC4444), fontSize = 16.sp)
+                            Text(stringResource(R.string.delete), color = if (IsModernClassic || IsPixel) Danger else Color(0xFFCC4444), fontSize = 16.sp)
                         }
                     }
                 }
@@ -781,7 +791,7 @@ private fun HistoryList(items: List<Contact>) {
     ) {
         if (items.isEmpty()) {
             Text(
-                text     = "No history found",
+                text     = stringResource(R.string.no_history),
                 color    = TextSecondary,
                 style    = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -798,13 +808,13 @@ private fun HistoryList(items: List<Contact>) {
                 CallTypeIcon(callType = entry.callType)
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    text  = callTypeLabel(entry.callType),
+                    text  = CallTypeLabel(entry.callType),
                     color = TextPrimary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text  = entry.lastCallTime.toTimeAgo(),
+                    text  = formatTimeAgo(entry.lastCallTime),
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -813,11 +823,12 @@ private fun HistoryList(items: List<Contact>) {
     }
 }
 
-private fun callTypeLabel(type: Int) = when (type) {
-    CallLog.Calls.MISSED_TYPE   -> "Missed"
-    CallLog.Calls.INCOMING_TYPE -> "Incoming"
-    CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
-    else                        -> "Call"
+@Composable
+private fun CallTypeLabel(type: Int) = when (type) {
+    CallLog.Calls.MISSED_TYPE   -> stringResource(R.string.filter_missed)
+    CallLog.Calls.INCOMING_TYPE -> stringResource(R.string.filter_received)
+    CallLog.Calls.OUTGOING_TYPE -> stringResource(R.string.tab_calls) // Use "Call" or "Outgoing"
+    else                        -> stringResource(R.string.call)
 }
 
 // ── Sheet option row ─────────────────────────────────────────────────────────
@@ -875,12 +886,12 @@ private fun EmptyState(modifier: Modifier = Modifier) {
                 modifier           = Modifier.size(56.dp)
             )
             Text(
-                text  = "No results",
+                text  = stringResource(R.string.no_results),
                 color = TextSecondary,
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                text  = "Your recent calls and contacts will appear here",
+                text  = stringResource(R.string.recent_empty_hint),
                 color = TextSecondary,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -891,7 +902,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 // ── Section headers ──────────────────────────────────────────────────────────
 
 @Composable
-private fun DateHeaderRow(label: String) {
+private fun DateHeaderRow(timestamp: Long) {
     val isModernOrPixel = IsModernClassic || IsPixel
     Box(
         modifier = Modifier
@@ -911,7 +922,7 @@ private fun DateHeaderRow(label: String) {
             )
         }
         Text(
-            text  = label,
+            text  = timestamp.toDateLabel(),
             color = if (isModernOrPixel) TextSecondary else TextPrimary,
             style = MaterialTheme.typography.bodySmall.copy(
                 fontWeight = if (isModernOrPixel) FontWeight.Medium else FontWeight.Normal,
@@ -1013,9 +1024,7 @@ private fun PixelContactRow(
                         PixelCallTypeIcon(callType = contact.callType, selected = selected)
                         Spacer(Modifier.width(4.dp))
                     }
-                    val secondaryText = remember(contact.number, contact.lastCallTime) {
-                        buildSecondaryLine(contact)
-                    }
+                    val secondaryText = buildSecondaryLine(contact)
                     Text(
                         text     = secondaryText,
                         color    = secondaryColor,
@@ -1197,7 +1206,7 @@ private fun ExpandedPanel(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text  = "See more in History",
+                text  = stringResource(R.string.see_more_in_history),
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.clickable { onHistory() }
@@ -1212,19 +1221,19 @@ private fun ExpandedPanel(
         ) {
             ExpandedActionButton(
                 icon = Icons.Default.Phone,
-                label = "Call",
+                label = stringResource(R.string.call),
                 onClick = onCall,
                 modifier = Modifier.weight(1f)
             )
             ExpandedActionButton(
                 icon = Icons.AutoMirrored.Filled.Message,
-                label = "Message",
+                label = stringResource(R.string.message),
                 onClick = onMessage,
                 modifier = Modifier.weight(1f)
             )
             ExpandedActionButton(
                 icon = Icons.Default.History,
-                label = "History",
+                label = stringResource(R.string.history),
                 onClick = onHistory,
                 modifier = Modifier.weight(1f)
             )
@@ -1262,6 +1271,7 @@ private fun ExpandedActionButton(
     }
 }
 
+@Composable
 private fun formatRelativeTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
@@ -1269,10 +1279,10 @@ private fun formatRelativeTime(timestamp: Long): String {
     val hours = diff / 3_600_000
     val days = diff / 86_400_000
     return when {
-        minutes < 1  -> "Just now"
-        minutes < 60 -> "$minutes min ago"
-        hours < 24   -> "$hours hr ago"
-        days < 7     -> "$days days ago"
+        minutes < 1  -> stringResource(R.string.just_now)
+        minutes < 60 -> stringResource(R.string.min_ago, minutes.toInt())
+        hours < 24   -> stringResource(R.string.hr_ago, hours.toInt())
+        days < 7     -> stringResource(R.string.days_ago, days.toInt())
         else -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(timestamp))
     }
 }
@@ -1345,16 +1355,33 @@ private fun CallTypeIcon(callType: Int) {
 
 // ── Secondary line ───────────────────────────────────────────────────────────
 
+@Composable
 private fun buildSecondaryLine(contact: Contact): String {
     return if (contact.isRecent && contact.lastCallTime > 0L) {
-        "${contact.number}  •  ${contact.lastCallTime.toTimeAgo()}"
+        "${contact.number}  •  ${formatTimeAgo(contact.lastCallTime)}"
     } else {
         contact.number
     }
 }
 
+@Composable
+private fun formatTimeAgo(timestamp: Long): String {
+    val diff = System.currentTimeMillis() - timestamp
+    val min  = diff / 60_000
+    val hr   = diff / 3_600_000
+    val day  = diff / 86_400_000
+    return when {
+        diff < 60_000 -> stringResource(R.string.just_now)
+        min  < 60     -> stringResource(R.string.m_ago, min.toInt())
+        hr   < 24     -> stringResource(R.string.h_ago, hr.toInt())
+        day  < 7      -> stringResource(R.string.d_ago, day.toInt())
+        else          -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(timestamp))
+    }
+}
+
 // ── Date / time formatters ───────────────────────────────────────────────────
 
+@Composable
 private fun Long.toDateLabel(): String = toDateLabel(todayStartMillis(), yesterdayStartMillis())
 
 private fun todayStartMillis(): Long {
@@ -1366,24 +1393,20 @@ private fun todayStartMillis(): Long {
 
 private fun yesterdayStartMillis(): Long = todayStartMillis() - 86_400_000L
 
+@Composable
 private fun Long.toDateLabel(todayStart: Long, yesterdayStart: Long): String {
     return when {
-        this >= todayStart     -> "Today"
-        this >= yesterdayStart -> "Yesterday"
+        this >= todayStart     -> stringResource(R.string.today)
+        this >= yesterdayStart -> stringResource(R.string.yesterday)
         else -> SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(Date(this))
     }
 }
 
-private fun Long.toTimeAgo(): String {
-    val diff = System.currentTimeMillis() - this
-    val min  = diff / 60_000
-    val hr   = diff / 3_600_000
-    val day  = diff / 86_400_000
-    return when {
-        diff < 60_000 -> "Just now"
-        min  < 60     -> "${min}m ago"
-        hr   < 24     -> "${hr}h ago"
-        day  < 7      -> "${day}d ago"
-        else          -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(this))
+@Composable
+private fun buildSecondaryLine(contact: Contact): String {
+    return if (contact.isRecent && contact.lastCallTime > 0L) {
+        "${contact.number}  •  ${formatTimeAgo(contact.lastCallTime)}"
+    } else {
+        contact.number
     }
 }
