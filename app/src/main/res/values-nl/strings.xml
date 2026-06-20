@@ -94,6 +94,10 @@
     <string name="calling">Bellen…</string>
     <string name="in_call">In gesprek</string>
     <string name="incoming_call">Inkomende oproep</string>
+    <string name="missed_call">Gemiste oproep</string>
+    <string name="outgoing_call">Uitgaand gesprek</string>
+    <string name="blocked_call">Geblokkeerd gesprek</string>
+    <string name="rejected_call">Geweigerd gesprek</string>
     <string name="connecting">Verbinden…</string>
     <string name="call_ended">Gesprek beëindigd</string>
     <string name="ending">Beëindigen…</string>

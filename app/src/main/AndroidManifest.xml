@@ -22,6 +22,9 @@
     <!-- Allows InCallActivity to show over the lock screen -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
+    <!-- Proximity wake lock: dims screen when phone is held to ear during a call -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- Call recording (VOICE_CALL when default dialer; MIC fallback) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 

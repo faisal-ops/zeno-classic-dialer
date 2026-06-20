@@ -314,10 +314,11 @@ private fun callTypeIcon(type: Int) = when (type) {
 
 @Composable
 private fun CallTypeLabel(type: Int) = when (type) {
-    CallLog.Calls.MISSED_TYPE    -> stringResource(R.string.filter_missed)
-    CallLog.Calls.INCOMING_TYPE  -> stringResource(R.string.filter_received)
-    CallLog.Calls.OUTGOING_TYPE  -> stringResource(R.string.tab_calls)
-    CallLog.Calls.BLOCKED_TYPE   -> stringResource(R.string.blocked_numbers)
+    CallLog.Calls.MISSED_TYPE    -> stringResource(R.string.missed_call)
+    CallLog.Calls.INCOMING_TYPE  -> stringResource(R.string.incoming_call)
+    CallLog.Calls.OUTGOING_TYPE  -> stringResource(R.string.outgoing_call)
+    CallLog.Calls.BLOCKED_TYPE   -> stringResource(R.string.blocked_call)
+    CallLog.Calls.REJECTED_TYPE  -> stringResource(R.string.rejected_call)
     else                         -> stringResource(R.string.call)
 }
 

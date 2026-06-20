@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.PowerManager
 import android.telecom.Call
 import android.telephony.SmsManager
 import android.view.KeyCharacterMap
@@ -25,6 +26,7 @@ class InCallActivity : ComponentActivity() {
 
     private val vm: InCallViewModel by viewModels()
     private var pendingQuickReply: String? = null
+    private var proximityWakeLock: PowerManager.WakeLock? = null
 
     private val smsPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -44,9 +46,18 @@ class InCallActivity : ComponentActivity() {
         setTurnScreenOn(true)
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        val pm = getSystemService(PowerManager::class.java)
+        if (pm.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
+            proximityWakeLock = pm.newWakeLock(
+                PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
+                "ZenoDialer:proximity"
+            )
+        }
+
         lifecycleScope.launch {
             CallStateHolder.info.collect { info ->
                 val s = info?.state
+                updateProximityWakeLock(s)
                 if (info == null || s == Call.STATE_DISCONNECTED || s == Call.STATE_DISCONNECTING) {
                     CallRecorder.stop(this@InCallActivity)
                 }
@@ -103,6 +114,7 @@ class InCallActivity : ComponentActivity() {
     // This ensures End/Call keys work even if MainActivity was never started or was destroyed.
     override fun onResume() {
         super.onResume()
+        updateProximityWakeLock(CallStateHolder.info.value?.state)
         com.zeno.dialer.service.ToolbarButtonHandler.onCallPressed = {
             val s = CallStateHolder.info.value?.state
             if (s == Call.STATE_RINGING) CallStateHolder.answer()
@@ -111,6 +123,13 @@ class InCallActivity : ComponentActivity() {
             val s = CallStateHolder.info.value?.state
             if (s == Call.STATE_RINGING) CallStateHolder.reject() else CallStateHolder.hangup()
         }
+    }
+
+    override fun onPause() {
+        // Release proximity wakelock when the activity is no longer visible so
+        // we don't suppress the screen indefinitely in the background.
+        proximityWakeLock?.takeIf { it.isHeld }?.release()
+        super.onPause()
     }
 
     override fun onStop() {
@@ -125,6 +144,7 @@ class InCallActivity : ComponentActivity() {
 
     override fun onDestroy() {
         CallRecorder.stop(this)
+        proximityWakeLock?.takeIf { it.isHeld }?.release()
         super.onDestroy()
     }
 
@@ -175,6 +195,19 @@ class InCallActivity : ComponentActivity() {
             }
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    private fun updateProximityWakeLock(state: Int?) {
+        val wl = proximityWakeLock ?: return
+        val shouldHold = state == Call.STATE_ACTIVE ||
+                         state == Call.STATE_DIALING ||
+                         state == Call.STATE_CONNECTING ||
+                         state == Call.STATE_HOLDING
+        if (shouldHold && !wl.isHeld) {
+            wl.acquire()
+        } else if (!shouldHold && wl.isHeld) {
+            wl.release()
+        }
     }
 
     private fun sendQuickReply(message: String) {
