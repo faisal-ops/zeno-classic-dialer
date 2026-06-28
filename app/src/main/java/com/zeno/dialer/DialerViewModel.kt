@@ -190,6 +190,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
             try { contactsRepo.search("") } catch (_: SecurityException) { }
             blockedNumbersRepo.syncFromSystem()
             refreshBlockedNumbers()
+            recentsRepo.markMissedCallsAsRead()
         }
         refreshFavorites()
         refreshBlockedNumbers()

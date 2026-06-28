@@ -119,10 +119,8 @@ private fun CallHistoryDetailScreen(
         allItems = RecentsRepo(context).getHistoryForNumber(number)
     }
 
-    // Group entries by date label
-    val grouped = remember(allItems) {
-        allItems.groupBy { it.lastCallTime.toDateLabel() }
-    }
+    // Group entries by date label (toDateLabel is @Composable so must run in composable scope)
+    val grouped = allItems.groupBy { it.lastCallTime.toDateLabel() }
 
     Column(
         modifier = Modifier

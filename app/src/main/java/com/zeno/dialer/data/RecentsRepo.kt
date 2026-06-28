@@ -184,6 +184,22 @@ class RecentsRepo(private val context: Context) {
         } catch (_: Exception) { 0 }
     }
 
+    fun markMissedCallsAsRead() {
+        if (BuildConfig.DEBUG) return
+        try {
+            val values = android.content.ContentValues(2).apply {
+                put(CallLog.Calls.IS_READ, 1)
+                put(CallLog.Calls.NEW, 0)
+            }
+            context.contentResolver.update(
+                CallLog.Calls.CONTENT_URI,
+                values,
+                "${CallLog.Calls.TYPE} = ${CallLog.Calls.MISSED_TYPE} AND (${CallLog.Calls.IS_READ} = 0 OR ${CallLog.Calls.NEW} = 1)",
+                null
+            )
+        } catch (_: Exception) { }
+    }
+
     fun clearLookupCache() {
         phoneLookupCache.clear()
         cachedResults = emptyList()

@@ -34,17 +34,10 @@ class ButtonInterceptService : AccessibilityService() {
                     }
                     return true
                 }
-                // Some keyboard firmwares map the green call button differently.
-                KeyEvent.KEYCODE_HEADSETHOOK -> {
-                    Log.i("ButtonInterceptService", "CALL-like key intercepted: ${event.keyCode}")
-                    val callback = ToolbarButtonHandler.onCallPressed
-                    if (callback != null) {
-                        callback.invoke()
-                    } else {
-                        openDefaultDialer()
-                    }
-                    return true
-                }
+                // KEYCODE_HEADSETHOOK intentionally NOT intercepted here.
+                // Headset buttons (wired/BT) send this key for play/pause/answer — consuming
+                // it here would trigger an outgoing call whenever the user presses a headset
+                // button while the dialer is in the foreground.
                 KeyEvent.KEYCODE_ENDCALL -> {
                     val callback = ToolbarButtonHandler.onEndPressed
                     if (callback != null) {

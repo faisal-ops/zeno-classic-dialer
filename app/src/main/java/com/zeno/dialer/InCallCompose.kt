@@ -500,7 +500,8 @@ private fun RingingPanel(
                     .clickable { showQuickReplies = true }
                     .padding(horizontal = 20.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
-                             Icon(
+            ) {
+                Icon(
                         imageVector = Icons.AutoMirrored.Filled.Message,
                         contentDescription = stringResource(R.string.message),
                         tint = TextSecondary,
@@ -624,7 +625,6 @@ private fun RingingPanel(
             }
         }
     }
-}
 
 @Composable
 private fun InCallControlsPanel(
@@ -818,6 +818,7 @@ private fun ControlCell(
 
 @Composable
 private fun EndCallBar(onEnd: () -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     val isMC = IsModernClassic
     if (isMC) {
         // Modern Classic: floating rounded pill on dark background

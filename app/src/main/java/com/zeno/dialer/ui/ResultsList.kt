@@ -1401,12 +1401,3 @@ private fun Long.toDateLabel(todayStart: Long, yesterdayStart: Long): String {
         else -> SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(Date(this))
     }
 }
-
-@Composable
-private fun buildSecondaryLine(contact: Contact): String {
-    return if (contact.isRecent && contact.lastCallTime > 0L) {
-        "${contact.number}  •  ${formatTimeAgo(contact.lastCallTime)}"
-    } else {
-        contact.number
-    }
-}
