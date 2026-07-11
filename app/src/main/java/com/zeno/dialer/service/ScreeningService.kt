@@ -5,10 +5,9 @@ import android.provider.ContactsContract
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import com.zeno.dialer.AppPreferences
+import com.zeno.dialer.data.BlockedNumbersRepo
 
 private const val KEY_BLOCK_UNKNOWN = "block_unknown_callers"
-private const val KEY_BLOCKED_NUMBERS = "blocked_numbers"
-private const val SEP = "|:|"
 
 /**
  * Screens incoming calls before they ring.
@@ -63,13 +62,5 @@ class ScreeningService : CallScreeningService() {
         }
     }
 
-    private fun isInBlockedList(number: String): Boolean {
-        val normalized = number.filter { it.isDigit() }
-        if (normalized.isBlank()) return false
-        val raw = getSharedPreferences(AppPreferences.FILE_SETTINGS, MODE_PRIVATE)
-            .getString(KEY_BLOCKED_NUMBERS, "")
-            .orEmpty()
-        if (raw.isBlank()) return false
-        return raw.split(SEP).any { it.filter { c -> c.isDigit() } == normalized }
-    }
+    private fun isInBlockedList(number: String): Boolean = BlockedNumbersRepo(this).contains(number)
 }

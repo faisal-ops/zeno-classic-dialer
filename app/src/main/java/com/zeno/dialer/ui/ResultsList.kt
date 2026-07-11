@@ -59,7 +59,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.automirrored.filled.PhoneCallback
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -310,15 +309,16 @@ fun ResultsList(
     // Keep quick-reply sheet compact; allow partial expansion on small screens.
     val quickMsgSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val prefs = context.getSharedPreferences(AppPreferences.FILE_SETTINGS, Context.MODE_PRIVATE)
-    val quickResponses = remember {
+    val defaultQuickResponses = listOf(
+        stringResource(R.string.quick_response_default_1),
+        stringResource(R.string.quick_response_default_2),
+        stringResource(R.string.quick_response_default_3),
+        stringResource(R.string.quick_response_default_4)
+    )
+    val quickResponses = remember(defaultQuickResponses) {
         (0..3).map { i ->
             prefs.getString("${AppPreferences.KEY_QUICK_RESPONSE_PREFIX}$i", null)
-                ?: when (i) {
-                    0 -> "Can't talk now. What's up?"
-                    1 -> "I'll call you right back."
-                    2 -> "I'll call you later."
-                    else -> "Can't talk now. Call me later?"
-                }
+                ?: defaultQuickResponses[i]
         }
     }
 
@@ -1037,7 +1037,7 @@ private fun PixelContactRow(
             Spacer(Modifier.width(4.dp))
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(BgElevated)
                     .clickable { onMessageTap() }
@@ -1046,15 +1046,15 @@ private fun PixelContactRow(
             ) {
                 Icon(
                     imageVector        = Icons.AutoMirrored.Filled.Message,
-                    contentDescription = "Message",
+                    contentDescription = stringResource(R.string.message),
                     tint               = Accent,
-                    modifier           = Modifier.size(15.dp)
+                    modifier           = Modifier.size(18.dp)
                 )
             }
             Spacer(Modifier.width(6.dp))
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(BgElevated)
                     .clickable { onCallTap() }
@@ -1063,9 +1063,9 @@ private fun PixelContactRow(
             ) {
                 Icon(
                     imageVector        = Icons.Default.Phone,
-                    contentDescription = "Call",
+                    contentDescription = stringResource(R.string.call),
                     tint               = Accent,
-                    modifier           = Modifier.size(15.dp)
+                    modifier           = Modifier.size(18.dp)
                 )
             }
         }
@@ -1153,7 +1153,7 @@ private fun ClassicContactRow(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Message,
-                    contentDescription = "Message",
+                    contentDescription = stringResource(R.string.message),
                     tint = Accent,
                     modifier = Modifier.size(14.dp)
                 )

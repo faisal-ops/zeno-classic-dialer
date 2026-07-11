@@ -13,6 +13,9 @@
 
     <!-- Main UI -->
     <string name="search_contacts">搜索联系人</string>
+    <string name="dialpad_key_star">星号</string>
+    <string name="dialpad_key_pound">井号</string>
+    <string name="dialpad_key_description">拨号键盘按键 %1$s</string>
     <string name="no_contacts">无联系人</string>
     <string name="no_history">无历史记录</string>
     <string name="no_results">无结果</string>
@@ -20,10 +23,8 @@
     <string name="clear">清除</string>
     <string name="cancel">取消</string>
     <string name="delete">删除</string>
-    <string name="ok">确定</string>
     <string name="pasted">已粘贴</string>
     <string name="nothing_to_paste">无可粘贴内容</string>
-    <string name="copied">已复制</string>
     <string name="menu">菜单</string>
     <string name="voice_search">语音搜索</string>
     <string name="voice_search_prompt">搜索联系人…</string>
@@ -72,9 +73,6 @@
     <string name="enter_number">输入号码</string>
     <string name="add_contact">添加联系人</string>
     <string name="backspace">退格</string>
-    <string name="dialpad_paste">粘贴</string>
-    <string name="dialpad_paste_hint">从剪贴板</string>
-    <string name="dialpad_copy_hint">输入框中的号码</string>
     <string name="dialpad_number_bar_a11y">号码输入；长按粘贴或复制</string>
 
     <!-- In-Call -->
@@ -112,6 +110,10 @@
     <string name="quick_reply_templates">快速回复模板</string>
     <string name="write_your_own">自定义…</string>
     <string name="send_message_to">发送消息给</string>
+    <string name="quick_response_default_1">现在不方便接听,什么事?</string>
+    <string name="quick_response_default_2">我马上回电给你。</string>
+    <string name="quick_response_default_3">我稍后给你回电。</string>
+    <string name="quick_response_default_4">现在不方便接听,能稍后打给我吗?</string>
 
     <!-- Settings -->
     <string name="settings">设置</string>
@@ -136,7 +138,14 @@
     <string name="version_label">版本 %1$s</string>
     <string name="clear_history">清除通话记录</string>
     <string name="clear_history_confirm_title">清除通话记录？</string>
-    <string name="clear_history_confirm_msg">所有通话记录条目将被永久删除。</string>
+    <string name="clear_history_confirm_msg_scoped">%1$s将被永久删除。</string>
+    <string name="clear_history_scope_all">所有通话</string>
+    <string name="clear_history_scope_missed">未接来电</string>
+    <string name="clear_history_scope_received">已接来电</string>
+    <string name="clear_history_scope_dialed">拨出电话</string>
+    <string name="external_keyboard_bridge">外接键盘通话按钮</string>
+    <string name="external_keyboard_bridge_desc">允许已配对的硬件键盘保护壳应用接听、结束或拨打电话</string>
+    <string name="external_keyboard_bridge_info">默认为 Q25 等硬件键盘壳启用。任何应用都可以发送此信号——仅当你不使用此类硬件时才关闭。</string>
     <string name="see_caller_spam_id">查看来电和垃圾号码识别</string>
     <string name="see_caller_spam_id_desc">识别商业和垃圾号码</string>
     <string name="filter_spam">过滤垃圾电话</string>
@@ -171,8 +180,6 @@
     <string name="contact_calling_card_desc">联系人来电时显示的姓名和图片</string>
     <string name="back">返回</string>
     <string name="more">更多</string>
-    <string name="mobile">手机</string>
-    <string name="work">工作</string>
 
     <!-- Permissions / Prompts -->
     <string name="phone_permission_required">需要电话权限</string>

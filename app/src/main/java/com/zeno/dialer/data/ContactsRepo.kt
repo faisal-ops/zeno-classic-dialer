@@ -9,6 +9,8 @@ class ContactsRepo(private val context: Context) {
     @Volatile private var cache: List<Contact>? = null
     @Volatile private var indexedCache: List<FuzzySearch.IndexedContact>? = null
     @Volatile private var numberLookup: Map<String, Contact>? = null
+    @Volatile private var nonSimContactIdsCache: Set<Long>? = null
+    @Volatile private var starredCache: List<Contact>? = null
 
     fun search(query: String): List<Contact> {
         val all = ensureLoaded()
@@ -19,21 +21,19 @@ class ContactsRepo(private val context: Context) {
 
         val ranked = FuzzySearch.rankIndexed(qLower, qDigits, indexed)
         if (qDigits.isNotEmpty() && qDigits.length == query.length) {
-            val t9Matches = ArrayList<Contact>()
+            // Carry the match index forward from this single pass instead of re-scanning
+            // indexedCache per match to look it up again.
+            val t9Matches = ArrayList<Pair<Contact, Int>>()
             for (ic in indexed) {
-                if (ic.t9Digits.contains(qDigits)) {
-                    t9Matches.add(ic.contact)
-                }
+                val idx = ic.t9Digits.indexOf(qDigits)
+                if (idx >= 0) t9Matches.add(ic.contact to idx)
             }
-            t9Matches.sortBy { ic ->
-                val idx = indexedCache!!.first { it.contact === ic || (it.contact.id == ic.id && it.contact.number == ic.number) }.t9Digits.indexOf(qDigits)
-                if (idx >= 0) idx else Int.MAX_VALUE
-            }
+            t9Matches.sortBy { it.second }
             if (t9Matches.isNotEmpty()) {
                 val seen = HashSet<Long>(ranked.size + t9Matches.size)
                 val combined = ArrayList<Contact>(ranked.size + t9Matches.size)
                 for (c in ranked) { if (seen.add(c.id * 31L + c.number.hashCode())) combined.add(c) }
-                for (c in t9Matches) { if (seen.add(c.id * 31L + c.number.hashCode())) combined.add(c) }
+                for ((c, _) in t9Matches) { if (seen.add(c.id * 31L + c.number.hashCode())) combined.add(c) }
                 return combined
             }
         }
@@ -71,17 +71,22 @@ class ContactsRepo(private val context: Context) {
         cache = null
         indexedCache = null
         numberLookup = null
+        nonSimContactIdsCache = null
+        starredCache = null
     }
 
     fun getStarredContacts(): List<Contact> {
-        val allowedContactIds = loadNonSimContactIds()
+        starredCache?.let { return it }
+        val allowedContactIds = nonSimContactIds()
         val filterBySim = allowedContactIds.isNotEmpty()
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
             ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
+            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI,
+            ContactsContract.CommonDataKinds.Phone.TYPE,
+            ContactsContract.CommonDataKinds.Phone.LABEL
         )
         val selection = "${ContactsContract.CommonDataKinds.Phone.STARRED} = 1"
         val cursor = try {
@@ -96,6 +101,8 @@ class ContactsRepo(private val context: Context) {
             val nameCol = it.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
             val numCol = it.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
             val photoCol = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
+            val typeCol = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
+            val labelCol = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.LABEL)
             while (it.moveToNext()) {
                 val id = it.getLong(idCol)
                 if (filterBySim && id !in allowedContactIds) continue
@@ -105,25 +112,30 @@ class ContactsRepo(private val context: Context) {
                 if (number.isEmpty()) continue
                 val name = it.getString(nameCol).orEmpty().trim().ifEmpty { number }
                 val photo = if (photoCol >= 0) it.getString(photoCol) else null
-                contacts.add(Contact(id = id, name = name, number = number, photoUri = photo))
+                val type = if (typeCol >= 0) it.getInt(typeCol) else null
+                val label = if (labelCol >= 0) it.getString(labelCol) else null
+                contacts.add(Contact(id = id, name = name, number = number, photoUri = photo, numberType = type, numberTypeLabel = label))
             }
         }
+        starredCache = contacts
         return contacts
     }
 
     private fun loadAll(): List<Contact> {
-        val allowedContactIds = loadNonSimContactIds()
+        val allowedContactIds = nonSimContactIds()
         val filterBySim = allowedContactIds.isNotEmpty()
         val prefs = context.getSharedPreferences(AppPreferences.FILE_SETTINGS, Context.MODE_PRIVATE)
-        val sortBy = prefs.getInt("sort_by", 0)
-        val nameFormat = prefs.getInt("name_format", 0)
+        val sortBy = prefs.getInt(AppPreferences.KEY_SORT_BY, 0)
+        val nameFormat = prefs.getInt(AppPreferences.KEY_NAME_FORMAT, 0)
 
         val uri        = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
             ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
+            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI,
+            ContactsContract.CommonDataKinds.Phone.TYPE,
+            ContactsContract.CommonDataKinds.Phone.LABEL
         )
 
         val cursor = try {
@@ -143,6 +155,8 @@ class ContactsRepo(private val context: Context) {
             val nameCol  = it.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
             val numCol   = it.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
             val photoCol = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
+            val typeCol  = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
+            val labelCol = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.LABEL)
 
             while (it.moveToNext()) {
                 val id = it.getLong(idCol)
@@ -158,8 +172,10 @@ class ContactsRepo(private val context: Context) {
                     if (parts.size == 2) "${parts[1]}, ${parts[0]}" else rawName
                 } else rawName
                 val photo = if (photoCol >= 0) it.getString(photoCol) else null
+                val type = if (typeCol >= 0) it.getInt(typeCol) else null
+                val label = if (labelCol >= 0) it.getString(labelCol) else null
 
-                contacts.add(Contact(id = id, name = name, number = number, photoUri = photo))
+                contacts.add(Contact(id = id, name = name, number = number, photoUri = photo, numberType = type, numberTypeLabel = label))
             }
         }
 
@@ -171,6 +187,14 @@ class ContactsRepo(private val context: Context) {
         } else {
             contacts
         }
+    }
+
+    /** Cached wrapper around [loadNonSimContactIds] — [loadAll] and [getStarredContacts] both need it. */
+    private fun nonSimContactIds(): Set<Long> {
+        nonSimContactIdsCache?.let { return it }
+        val ids = loadNonSimContactIds()
+        nonSimContactIdsCache = ids
+        return ids
     }
 
     private fun loadNonSimContactIds(): Set<Long> {

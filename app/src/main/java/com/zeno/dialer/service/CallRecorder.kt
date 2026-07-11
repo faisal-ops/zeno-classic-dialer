@@ -7,6 +7,7 @@ import android.media.MediaRecorder
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
+import android.telecom.Call
 import android.util.Log
 import android.provider.MediaStore
 import java.io.File
@@ -47,10 +48,15 @@ object CallRecorder {
     private var recorder: MediaRecorder? = null
     private var currentFile: File? = null
     private var recordingStartedAtMs: Long = 0L
+    /** The specific [Call] currently being recorded, so a call swap/teardown can't leave recording bleeding into a different call. */
+    private var recordingCall: Call? = null
 
     private val lock = Any()
 
     val isRecording: Boolean get() = synchronized(lock) { recorder != null }
+
+    /** True if [call] is the one currently being recorded. */
+    fun isRecordingCall(call: Call): Boolean = synchronized(lock) { recordingCall === call }
 
     /** Absolute directory where `.m4a` files are written. */
     fun recordingsDirectory(context: Context): File {
@@ -68,7 +74,7 @@ object CallRecorder {
     /**
      * Starts recording. Thread-safe. Returns output file path, or null on failure.
      */
-    fun start(context: Context, contactName: String, phoneNumber: String): String? = synchronized(lock) {
+    fun start(context: Context, contactName: String, phoneNumber: String, call: Call): String? = synchronized(lock) {
         if (recorder != null) return currentFile?.absolutePath
 
         val appCtx = context.applicationContext
@@ -122,6 +128,7 @@ object CallRecorder {
                             recorder = null
                             currentFile?.delete()
                             currentFile = null
+                            recordingCall = null
                         } else {
                             releaseRecorderInstance(mr)
                         }
@@ -132,6 +139,7 @@ object CallRecorder {
                 mr.start()
                 recorder = mr
                 currentFile = file
+                recordingCall = call
                 recordingStartedAtMs = android.os.SystemClock.elapsedRealtime()
                 Log.i(TAG, "Recording started: ${file.absolutePath} source=$source")
                 return file.absolutePath
@@ -180,6 +188,7 @@ object CallRecorder {
             val mr = recorder
             recorder = null
             currentFile = null
+            recordingCall = null
             val startAtMs = recordingStartedAtMs
             recordingStartedAtMs = 0L
 

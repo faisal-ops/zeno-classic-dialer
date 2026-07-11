@@ -139,7 +139,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zeno.dialer.DialerUiState
-import com.zeno.dialer.FavoritesScrollController
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -209,8 +208,6 @@ internal val IsModernClassic: Boolean
 internal val IsPixel: Boolean
     @Composable get() = LocalDialerStyle.current == DialerStyle.PIXEL
 
-internal val AccentGreenBright = Color(0xFF69F0AE)
-
 internal val avatarPalette = listOf(
     Color(0xFF5B6ABF), Color(0xFF00796B), Color(0xFF2E7D32),
     Color(0xFF7B1FA2), Color(0xFFC62828), Color(0xFF0277BD),
@@ -243,9 +240,10 @@ fun DialerScreen(
     val activeCall by CallStateHolder.info.collectAsStateWithLifecycle()
     val isPixelTheme = IsPixel
     val tab        = if (isPixelTheme) pixelTabFromIndex(state.currentTabIndex) else tabFromIndex(state.currentTabIndex)
-    val hasMissedCalls = remember(state.results, tab) {
-        tab == DialerTab.CALLS && state.results.any { it.isRecent && it.callType == android.provider.CallLog.Calls.MISSED_TYPE }
-    }
+    // Tab-independent by design — badge must be visible from any tab, not just while already
+    // on Calls (the old state.results-based check was coupled to whatever filter/tab was
+    // active, so it could never alert the user from Contacts/Keypad/Home).
+    val hasMissedCalls = state.hasUnreadMissedCalls
     val context    = LocalContext.current
 
     SideEffect { viewModel.setKeypadActive(tab == DialerTab.KEYPAD) }
@@ -268,9 +266,11 @@ fun DialerScreen(
             ReturnToCallBanner(
                 info = activeCall!!,
                 onClick = {
+                    // NEW_TASK required for REORDER_TO_FRONT to find InCallActivity's separate
+                    // taskAffinity task rather than stacking a duplicate on this task.
                     context.startActivity(
                         Intent(context, InCallActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                         }
                     )
                 },
@@ -332,22 +332,6 @@ private fun pixelTabFromIndex(index: Int): DialerTab = when (index) {
     else -> DialerTab.HOME
 }
 
-/** Number of items in the Contacts LazyColumn (section headers + rows, or empty placeholder). */
-private fun contactsLazyItemCount(contacts: List<Contact>): Int {
-    if (contacts.isEmpty()) return 1
-    var lastLetter: Char? = null
-    var n = 0
-    for (c in contacts) {
-        val letter = c.name.firstOrNull()?.uppercaseChar() ?: '#'
-        if (lastLetter != letter) {
-            n++
-            lastLetter = letter
-        }
-        n++
-    }
-    return n
-}
-
 /** Flat index in Contacts LazyColumn (A/B/… headers + rows) for scroll-to-selection. */
 private fun contactsFlatIndexForSelection(contacts: List<Contact>, selected: Contact?): Int {
     if (selected == null) return -1
@@ -386,6 +370,12 @@ private sealed interface ContactRow {
 }
 
 /** LazyColumn index → index in [contactsOnly] for each contact row (skips section headers). */
+/** Real ContactsContract type label (Mobile/Home/Work/…) for a number, falling back to the number itself when unknown. */
+private fun phoneNumberTypeLabel(context: android.content.Context, type: Int?, customLabel: String?, fallback: String): String {
+    if (type == null) return fallback
+    return ContactsContract.CommonDataKinds.Phone.getTypeLabel(context.resources, type, customLabel ?: "").toString()
+}
+
 private fun buildLazyIndexToContactsRowIndex(flatRows: List<ContactRow>): Map<Int, Int> {
     val m = HashMap<Int, Int>(flatRows.size)
     flatRows.forEachIndexed { lazyIdx, row ->
@@ -413,6 +403,8 @@ private fun ContactsContent(
     onOpenContact: (com.zeno.dialer.data.Contact) -> Unit,
     onEditNumber: (String) -> Unit
 ) {
+    val context = LocalContext.current
+
     LaunchedEffect(Unit) {
         viewModel.setFilter(FilterMode.CONTACTS)
     }
@@ -532,7 +524,6 @@ private fun ContactsContent(
         val sel = selectedContact ?: return@LaunchedEffect
         val flatIdx = contactsFlatIndexForSelection(contactsOnly, sel)
         if (flatIdx < 0) return@LaunchedEffect
-        // Use flatRows.size as the ground truth item count — avoids drift with contactsLazyItemCount().
         if (flatIdx >= flatRows.size) return@LaunchedEffect
         val cIdx = contactsIndexForSelection(contactsOnly, sel)
         if (cIdx < 0 || cIdx >= rowBringers.size) return@LaunchedEffect
@@ -706,7 +697,7 @@ private fun ContactsContent(
                                         lineHeight = 18.sp
                                     )
                                     Text(
-                                        text = if ((contact.name.hashCode() and 1) == 0) stringResource(R.string.mobile) else stringResource(R.string.work),
+                                        text = phoneNumberTypeLabel(context, contact.numberType, contact.numberTypeLabel, contact.number),
                                         color = TextSecondary,
                                         fontSize = 15.sp,
                                         lineHeight = 16.sp,
@@ -1067,72 +1058,6 @@ private fun AllMissedTabs(
     }
 }
 
-@Composable
-private fun SuggestionRow(
-    contact: Contact,
-    isPinned: Boolean,
-    onCall: () -> Unit,
-    onPin: () -> Unit,
-    onUnpin: () -> Unit
-) {
-    Row(
-        modifier          = Modifier
-            .fillMaxWidth()
-            .padding(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        ContactAvatar(name = contact.name, photoUri = contact.photoUri, size = 40)
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text     = contact.name,
-                color    = TextPrimary,
-                style    = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            Text(
-                text  = contact.number,
-                color = TextSecondary,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-        // Pin / unpin button
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .clickable { if (isPinned) onUnpin() else onPin() }
-                .background(BgSurface),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector        = Icons.Default.Favorite,
-                contentDescription = if (isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin),
-                tint               = if (isPinned) AccentGreen else TextSecondary,
-                modifier           = Modifier.size(18.dp)
-            )
-        }
-        Spacer(Modifier.width(4.dp))
-        // Call button
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .clickable { onCall() }
-                .background(BgSurface),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector        = Icons.Default.Phone,
-                contentDescription = stringResource(R.string.call),
-                tint               = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                modifier           = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
 // ── KEYPAD tab ───────────────────────────────────────────────────────────────
 
 private val dialpadKeys = listOf(
@@ -1184,13 +1109,26 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
     val canCall  = hasInput
     val keypadMatch = state.keypadContactMatch
 
+    // During an active call this screen doubles as a DTMF pad (opened via "Keypad" from the
+    // in-call UI) with the return-to-call banner above it eating vertical space — tighten
+    // header/footer/grid proportions so it reads as a purpose-built compact view rather than
+    // the full "place a new call" screen with a banner awkwardly glued on top.
+    val activeCall by CallStateHolder.info.collectAsStateWithLifecycle()
+    val compact = activeCall != null
+
     val view = LocalView.current
     val context = LocalContext.current
+    val isModernKeypad = IsModernClassic
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        // Slightly smaller tiles (~10%) so the Enter Number bar can use more vertical space.
-        val cellSize = maxWidth / 3 * 0.9f
+        val headerH = if (compact) 44.dp else 70.dp
+        val footerH = if (compact) (if (isModernKeypad) 80.dp else 66.dp)
+                      else          (if (isModernKeypad) 72.dp else 58.dp)
 
-        val isModernKeypad = IsModernClassic
+        // Same purely width-derived sizing as the normal dial screen (no height clamping —
+        // that's what made it fill the screen edge-to-edge) — compact mode just uses a smaller
+        // ratio to shrink it a bit for the extra call banner/taller footer, same layout style.
+        val widthRatio = if (compact) 0.75f else 0.9f
+        val cellSize = maxWidth / 3 * widthRatio
         Column(
             modifier            = Modifier
                 .fillMaxSize()
@@ -1201,7 +1139,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(70.dp)
+                    .height(headerH)
                     .background(if (isModernKeypad) BgElevated else Accent)
                     .then(
                         if (isModernKeypad) Modifier.border(
@@ -1210,7 +1148,11 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                             shape = RoundedCornerShape(0.dp)
                         ) else Modifier
                     )
-                    .padding(start = 14.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
+                    .padding(
+                        start = 14.dp, end = 10.dp,
+                        top = if (compact) 5.dp else 7.dp,
+                        bottom = if (compact) 5.dp else 7.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(modifier = Modifier.weight(1f)) {
@@ -1266,13 +1208,16 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                                 overflow      = TextOverflow.Ellipsis,
                                 style         = if (digitShadow != null) TextStyle(shadow = digitShadow) else TextStyle.Default
                             )
-                            if (keypadMatch != null) {
+                            // Hidden during a call — typed digits are almost always DTMF/IVR
+                            // navigation there, not a number about to be dialed, so labeling
+                            // it with a contact name is misleading more often than helpful.
+                            if (keypadMatch != null && !compact) {
                                 Text(
                                     text       = keypadMatch.name,
                                     color      = if (isModernKeypad) Accent else Color.White.copy(alpha = 0.96f),
-                                    fontSize   = 14.sp,
+                                    fontSize   = if (compact) 12.sp else 14.sp,
                                     fontWeight = FontWeight.Medium,
-                                    lineHeight = 14.sp,
+                                    lineHeight = if (compact) 12.sp else 14.sp,
                                     maxLines   = 1,
                                     overflow   = TextOverflow.Ellipsis,
                                     style      = if (!isModernKeypad) TextStyle(
@@ -1289,10 +1234,10 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                             Text(
                                 text          = stringResource(R.string.enter_number),
                                 color         = if (isModernKeypad) TextHint else Color.White.copy(alpha = 0.72f),
-                                fontSize      = if (isModernKeypad) 17.sp else 16.sp,
+                                fontSize      = if (compact) 14.sp else if (isModernKeypad) 17.sp else 16.sp,
                                 fontWeight    = FontWeight.Medium,
                                 letterSpacing = 0.3.sp,
-                                lineHeight    = 20.sp,
+                                lineHeight    = if (compact) 16.sp else 20.sp,
                                 maxLines      = 1,
                                 overflow      = TextOverflow.Ellipsis
                             )
@@ -1302,7 +1247,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                 }
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(if (compact) 30.dp else 36.dp)
                         .clip(RoundedCornerShape(2.dp))
                         .clickable {
                             val raw = state.query.trim()
@@ -1321,7 +1266,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                         imageVector = Icons.Default.PersonAdd,
                         contentDescription = stringResource(R.string.add_contact),
                         tint = if (isModernKeypad) AccentMuted else Color.White.copy(alpha = 0.9f),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(if (compact) 18.dp else 22.dp)
                     )
                 }
             }
@@ -1364,11 +1309,11 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (isModernKeypad) 72.dp else 58.dp)
+                    .height(footerH)
                     .background(if (isModernKeypad) BgPage else Color.Transparent)
                     .then(
                         if (isModernKeypad)
-                            Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                            Modifier.padding(horizontal = 10.dp, vertical = if (compact) 10.dp else 8.dp)
                         else
                             Modifier.border(1.dp, Border, RoundedCornerShape(0.dp))
                     ),
@@ -1401,20 +1346,25 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                         imageVector = Icons.Default.Phone,
                         contentDescription = stringResource(R.string.call),
                         tint = Color.White,
-                        modifier = Modifier.size(if (isModernKeypad) 20.dp else 18.dp)
+                        modifier = Modifier.size(
+                            if (compact) 24.dp else (if (isModernKeypad) 20.dp else 18.dp)
+                        )
                     )
-                    Spacer(Modifier.width(7.dp))
+                    Spacer(Modifier.width(if (compact) 9.dp else 7.dp))
                     Text(
                         stringResource(R.string.call),
                         color      = Color.White,
-                        fontSize   = if (isModernKeypad) 15.sp else 14.sp,
+                        fontSize   = if (compact) 18.sp else (if (isModernKeypad) 15.sp else 14.sp),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-                if (isModernKeypad) Spacer(Modifier.width(8.dp))
+                if (isModernKeypad) Spacer(Modifier.width(if (compact) 10.dp else 8.dp))
                 Box(
                     modifier = Modifier
-                        .then(if (isModernKeypad) Modifier.width(60.dp) else Modifier.width(64.dp))
+                        .then(
+                            if (compact) Modifier.width(72.dp)
+                            else if (isModernKeypad) Modifier.width(60.dp) else Modifier.width(64.dp)
+                        )
                         .fillMaxHeight()
                         .then(if (isModernKeypad) Modifier.clip(RoundedCornerShape(10.dp)) else Modifier)
                         .background(if (isModernKeypad) BgElevated else Color(0xFF9E9E9E))
@@ -1428,7 +1378,7 @@ private fun KeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
                         imageVector = Icons.AutoMirrored.Filled.Backspace,
                         contentDescription = stringResource(R.string.backspace),
                         tint = if (isModernKeypad) TextSecondary else Color.White,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(if (compact) 24.dp else 20.dp)
                     )
                 }
             }
@@ -1449,14 +1399,15 @@ private fun DialpadButton(
     val pressed by interaction.collectIsPressedAsState()
     val isModern = IsModernClassic
     val padDesc = when (digit) {
-        '*' -> "star"
-        '#' -> "pound"
+        '*' -> stringResource(R.string.dialpad_key_star)
+        '#' -> stringResource(R.string.dialpad_key_pound)
         else -> digit.toString()
     }
+    val dialpadKeyDescription = stringResource(R.string.dialpad_key_description, padDesc)
     Box(
         modifier         = Modifier
             .size(size)
-            .semantics { contentDescription = "Dial pad key $padDesc" }
+            .semantics { contentDescription = dialpadKeyDescription }
             .then(
                 if (isModern) Modifier
                     .padding(2.dp)
@@ -1580,12 +1531,18 @@ private fun DialpadButton(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PixelKeypadContent(state: DialerUiState, viewModel: DialerViewModel) {
-    val matched     = state.results.firstOrNull()
+    // Use the same T9-style match as the Classic keypad (state.keypadContactMatch) rather than
+    // state.results.firstOrNull() — that list is a recents-prioritized search merge and can name
+    // a different contact than the dedicated keypad match for the same typed digits.
+    val matched     = state.keypadContactMatch
     val hasInput    = state.query.isNotBlank()
     val activeCall  by CallStateHolder.info.collectAsStateWithLifecycle()
     val duringCall  = activeCall != null
-    // During an active call typing keys sends DTMF, not a new call — hide the call button
-    val canCall     = hasInput && !duringCall
+    // Keep the call button available even during a call — placeCall() (MainActivity) holds the
+    // current call first if needed, so this also doubles as "Add a call". Previously this was
+    // hidden whenever any call existed (including a HELD call from "Add a call"), which made it
+    // impossible to ever dial the second number from this screen.
+    val canCall     = hasInput
 
     val view    = LocalView.current
     val context = LocalContext.current
@@ -1601,21 +1558,32 @@ private fun PixelKeypadContent(state: DialerUiState, viewModel: DialerViewModel)
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val g            = 10.dp                       // inter-key gap
         val hPad         = 18.dp                       // side padding
-        val displayH     = 62.dp                       // number display row height
-        val callBtnH     = 54.dp                       // call pill height
+        // Display box only needs to fit one line during a call (contact-match line is hidden
+        // then) — tight fit around the single 30sp digit line, reclaiming the rest for bigger
+        // keys/call button instead of leaving it empty.
+        val displayH     = if (duringCall) 40.dp else 62.dp
         val callGap      = 14.dp                       // gap between grid and call button
-        val bottomSpacer = 14.dp                       // gap below call button (above nav bar)
-        val topSpacer    = 10.dp                       // fixed top breathing room
+        val bottomSpacer = if (duringCall) 10.dp else 14.dp   // gap below call button (above nav bar)
+        val topSpacer    = if (duringCall) 6.dp else 10.dp    // fixed top breathing room
         val numRows      = dialpadKeys.size            // 4
 
         val gridW = maxWidth - hPad * 2
         val keyW  = (gridW - g * 2) / 3               // single key width
 
-        // Fill available space, allow taller pills for a premium feel
-        val idealRowH = (keyW.value * 0.65f).dp.coerceIn(52.dp, 90.dp)
-        // During a call the call button is hidden — give that space back to the key rows
-        val fixedH = topSpacer + displayH + g + g * (numRows - 1) + bottomSpacer +
-                if (duringCall) 0.dp else callGap + callBtnH
+        // Call button is a circle sized off the key width (not row height, to avoid a circular
+        // dependency with fixedH below) — reads as a proper primary action rather than a long,
+        // flat capsule stretched across half the grid. Larger during a call, where the shorter
+        // display box frees up more room.
+        val callBtnSize = (keyW.value * (if (duringCall) 1.05f else 0.95f)).dp
+            .coerceIn(58.dp, if (duringCall) 92.dp else 76.dp)
+
+        // Fill available space, allow taller pills for a premium feel. The previous 0.65f
+        // multiplier capped rows well below what's actually available on most screens (rows
+        // were never truly space-constrained here) — raised so keys actually grow to use
+        // available room instead of leaving it unused below the fixed ideal.
+        val idealRowH = (keyW.value * (if (duringCall) 0.85f else 0.65f)).dp
+            .coerceIn(52.dp, if (duringCall) 108.dp else 90.dp)
+        val fixedH = topSpacer + displayH + g + g * (numRows - 1) + bottomSpacer + callGap + callBtnSize
         val availForRows = (maxHeight - fixedH).coerceAtLeast(0.dp)
         val rowH      = minOf(idealRowH, (availForRows / numRows).coerceAtLeast(52.dp))
 
@@ -1672,7 +1640,11 @@ private fun PixelKeypadContent(state: DialerUiState, viewModel: DialerViewModel)
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    if (matched != null && hasInput) {
+                    // Hide the contact-name match while a call is active: typed digits are almost
+                    // always DTMF/IVR navigation in that context (e.g. "press 1 for support"),
+                    // not a number about to be dialed, so labeling it with a contact name is
+                    // misleading more often than it's helpful.
+                    if (matched != null && hasInput && !duringCall) {
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text     = matched.name,
@@ -1742,14 +1714,14 @@ private fun PixelKeypadContent(state: DialerUiState, viewModel: DialerViewModel)
                 }
             }
 
-            // ── Call pill (hidden during active call) ─────────────────────────
-            if (!duringCall) {
+            // ── Call button (always shown; also used to place a second call while one is
+            //    already active/held — placeCall() holds the current call first) ────
+            run {
                 Spacer(Modifier.height(callGap))
                 Box(
                     modifier = Modifier
-                        .width(gridW * 0.52f)
-                        .height(callBtnH)
-                        .clip(RoundedCornerShape(50))
+                        .size(callBtnSize)
+                        .clip(CircleShape)
                         .background(
                             if (canCall) Color(0xFF1EA446)
                             else Color(0xFF1EA446).copy(alpha = if (isLight) 0.55f else 0.32f)
@@ -1764,7 +1736,7 @@ private fun PixelKeypadContent(state: DialerUiState, viewModel: DialerViewModel)
                         imageVector        = Icons.Default.Phone,
                         contentDescription = stringResource(R.string.call),
                         tint               = Color.White,
-                        modifier           = Modifier.size(26.dp)
+                        modifier           = Modifier.size((callBtnSize.value * 0.42f).coerceIn(26f, 32f).dp)
                     )
                 }
                 Spacer(Modifier.height(bottomSpacer))
@@ -1894,11 +1866,14 @@ private fun BottomNavBar(current: DialerTab, showCallsBadge: Boolean, isPixel: B
             if (isPixel) {
                 pixelNavTabs.forEach { (tab, labelRes, icon) ->
                     PixelNavItem(
-                        icon     = icon,
-                        label    = stringResource(labelRes),
-                        selected = current == tab,
-                        onClick  = { onSelect(tab) },
-                        modifier = Modifier.weight(1f)
+                        icon      = icon,
+                        label     = stringResource(labelRes),
+                        selected  = current == tab,
+                        // Pixel has no separate "Calls" tab — recents/missed calls live under
+                        // Home, so that's the equivalent icon for this badge.
+                        showBadge = showCallsBadge && tab == DialerTab.HOME,
+                        onClick   = { onSelect(tab) },
+                        modifier  = Modifier.weight(1f)
                     )
                 }
             } else {
@@ -1907,7 +1882,7 @@ private fun BottomNavBar(current: DialerTab, showCallsBadge: Boolean, isPixel: B
                         iconRes   = tab.iconRes,
                         label     = stringResource(tab.labelRes),
                         selected  = current == tab,
-                        showBadge = IsModernClassic && showCallsBadge && tab == DialerTab.CALLS,
+                        showBadge = showCallsBadge && tab == DialerTab.CALLS,
                         onClick   = { onSelect(tab) },
                         modifier  = Modifier.weight(1f)
                     )
@@ -1919,14 +1894,16 @@ private fun BottomNavBar(current: DialerTab, showCallsBadge: Boolean, isPixel: B
 
 @Composable
 private fun PixelNavItem(
-    icon:     ImageVector,
-    label:    String,
-    selected: Boolean,
-    onClick:  () -> Unit,
-    modifier: Modifier = Modifier
+    icon:      ImageVector,
+    label:     String,
+    selected:  Boolean,
+    showBadge: Boolean = false,
+    onClick:   () -> Unit,
+    modifier:  Modifier = Modifier
 ) {
     val iconColor  = if (selected) TextPrimary else TextSecondary
     val textColor  = if (selected) TextPrimary else TextSecondary
+    val missedCallsBadgeDescription = stringResource(R.string.filter_missed)
 
     Column(
         modifier = modifier
@@ -1938,12 +1915,28 @@ private fun PixelNavItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector        = icon,
-            contentDescription = label,
-            tint               = iconColor,
-            modifier           = Modifier.size(22.dp)
-        )
+        Box {
+            Icon(
+                imageVector        = icon,
+                contentDescription = label,
+                tint               = iconColor,
+                modifier           = Modifier.size(22.dp)
+            )
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showBadge,
+                enter = fadeIn(tween(MotionMicroMs)),
+                exit = fadeOut(tween(MotionMicroMs)),
+                modifier = Modifier.align(Alignment.TopEnd).padding(start = 16.dp)
+            ) {
+                Text(
+                    "*",
+                    color = BadgeStar,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.semantics { contentDescription = missedCallsBadgeDescription }
+                )
+            }
+        }
         Spacer(Modifier.height(3.dp))
         Text(
             text       = label,
@@ -1979,6 +1972,7 @@ private fun NavItem(
     val iconColor = if (selected) Accent else TextSecondary
     val textColor = if (selected) Accent else TextSecondary
     val isModernNav = IsModernClassic
+    val missedCallsBadgeDescription = stringResource(R.string.filter_missed)
 
     Box(
         modifier = modifier
@@ -2038,7 +2032,13 @@ private fun NavItem(
                 .align(Alignment.TopCenter)
                 .padding(start = 33.dp, top = 2.dp)
         ) {
-            Text("*", color = BadgeStar, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "*",
+                color = BadgeStar,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { contentDescription = missedCallsBadgeDescription }
+            )
         }
     }
 }
@@ -2183,18 +2183,18 @@ private fun ReturnToCallBanner(info: ActiveCallInfo, onClick: () -> Unit, onEndC
             .fillMaxWidth()
             .background(SurfaceActive)
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
             verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
             modifier              = Modifier.weight(1f)
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
                     .background(Accent.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
@@ -2203,33 +2203,33 @@ private fun ReturnToCallBanner(info: ActiveCallInfo, onClick: () -> Unit, onEndC
                     imageVector        = Icons.Default.Phone,
                     contentDescription = null,
                     tint               = Accent,
-                    modifier           = Modifier.size(18.dp)
+                    modifier           = Modifier.size(14.dp)
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 Text(
                     text       = info.displayName,
                     color      = TextPrimary,
-                    fontSize   = 15.sp,
+                    fontSize   = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines   = 1,
                     overflow   = TextOverflow.Ellipsis
                 )
-                Text(text = stateText, color = Accent, fontSize = 13.sp)
+                Text(text = stateText, color = Accent, fontSize = 11.sp)
             }
         }
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .background(Danger.copy(alpha = 0.15f))
                 .clickable { onEndCall() }
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 11.dp, vertical = 5.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text       = stringResource(R.string.end_call),
                 color      = Danger,
-                fontSize   = 14.sp,
+                fontSize   = 12.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -2537,7 +2537,7 @@ private fun PixelSuggestionRow(
             Spacer(Modifier.width(4.dp))
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(BgElevated)
                     .clickable { if (isPinned) onUnpin() else onPin() }
@@ -2548,13 +2548,13 @@ private fun PixelSuggestionRow(
                     imageVector        = Icons.Default.Favorite,
                     contentDescription = if (isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin),
                     tint               = pinTint,
-                    modifier           = Modifier.size(15.dp)
+                    modifier           = Modifier.size(18.dp)
                 )
             }
             Spacer(Modifier.width(6.dp))
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(BgElevated)
                     .clickable { onCall() }
@@ -2565,7 +2565,7 @@ private fun PixelSuggestionRow(
                     imageVector        = Icons.Default.Phone,
                     contentDescription = stringResource(R.string.call),
                     tint               = Accent,
-                    modifier           = Modifier.size(15.dp)
+                    modifier           = Modifier.size(18.dp)
                 )
             }
         }

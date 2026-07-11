@@ -10,7 +10,14 @@ data class Contact(
     val isRecent: Boolean = false,
     val lastCallTime: Long = 0L,
     val callType: Int = 0,
-    val photoUri: String? = null
+    val photoUri: String? = null,
+    /** ContactsContract.CommonDataKinds.Phone.TYPE for this number, when loaded from contacts. */
+    val numberType: Int? = null,
+    /** Custom label text when [numberType] == Phone.TYPE_CUSTOM. */
+    val numberTypeLabel: String? = null,
+    /** CallLog.Calls.IS_READ for this entry (only meaningful when [isRecent] is true). Defaults
+     * to true so non-call-log-derived contacts never spuriously look "unread". */
+    val isCallLogRead: Boolean = true
 )
 
 enum class FilterMode { ALL, MISSED, RECEIVED, CONTACTS, RECENTS }

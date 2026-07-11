@@ -27,6 +27,8 @@ class InCallActivity : ComponentActivity() {
     private val vm: InCallViewModel by viewModels()
     private var pendingQuickReply: String? = null
     private var proximityWakeLock: PowerManager.WakeLock? = null
+    private var registeredCallHandler: (() -> Unit)? = null
+    private var registeredEndHandler: (() -> Unit)? = null
 
     private val smsPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -41,6 +43,7 @@ class InCallActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyPortraitModePreference()
 
         setShowWhenLocked(true)
         setTurnScreenOn(true)
@@ -71,10 +74,14 @@ class InCallActivity : ComponentActivity() {
                     if (latest == null || s2 == Call.STATE_DISCONNECTED) {
                         if (!isFinishing) {
                             // Bring our own dialer to front so the system phone app
-                            // doesn't surface after the call ends.
+                            // doesn't surface after the call ends. NEW_TASK is required for
+                            // REORDER_TO_FRONT to actually find the existing MainActivity task
+                            // (this activity has a different taskAffinity) — without it, Android
+                            // silently ignores REORDER_TO_FRONT and stacks a fresh MainActivity
+                            // instance on top of this one's task instead of reusing the real one.
                             startActivity(
                                 Intent(this@InCallActivity, MainActivity::class.java).apply {
-                                    flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                                 }
                             )
                             finish()
@@ -114,15 +121,20 @@ class InCallActivity : ComponentActivity() {
     // This ensures End/Call keys work even if MainActivity was never started or was destroyed.
     override fun onResume() {
         super.onResume()
+        applyPortraitModePreference()
         updateProximityWakeLock(CallStateHolder.info.value?.state)
-        com.zeno.dialer.service.ToolbarButtonHandler.onCallPressed = {
+        val callHandler: () -> Unit = {
             val s = CallStateHolder.info.value?.state
             if (s == Call.STATE_RINGING) CallStateHolder.answer()
         }
-        com.zeno.dialer.service.ToolbarButtonHandler.onEndPressed = {
+        val endHandler: () -> Unit = {
             val s = CallStateHolder.info.value?.state
             if (s == Call.STATE_RINGING) CallStateHolder.reject() else CallStateHolder.hangup()
         }
+        registeredCallHandler = callHandler
+        registeredEndHandler = endHandler
+        com.zeno.dialer.service.ToolbarButtonHandler.onCallPressed = callHandler
+        com.zeno.dialer.service.ToolbarButtonHandler.onEndPressed = endHandler
     }
 
     override fun onPause() {
@@ -137,9 +149,10 @@ class InCallActivity : ComponentActivity() {
             MyInCallService.instance?.setIncomingCallUiForeground(false)
         }
         super.onStop()
-        // Clear so MainActivity can re-register its own callbacks when it resumes.
-        com.zeno.dialer.service.ToolbarButtonHandler.onCallPressed = null
-        com.zeno.dialer.service.ToolbarButtonHandler.onEndPressed = null
+        // Only clear if MainActivity (or another instance) hasn't already taken over —
+        // see ToolbarButtonHandler.clearIfOwnedBy for why an unconditional null-out here
+        // can race with MainActivity.onResume() when it's brought to front over this activity.
+        com.zeno.dialer.service.ToolbarButtonHandler.clearIfOwnedBy(registeredCallHandler, registeredEndHandler)
     }
 
     override fun onDestroy() {

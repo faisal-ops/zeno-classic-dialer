@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.CallLog
+import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -60,6 +61,8 @@ data class DialerUiState(
     val isKeypadActive: Boolean = false,
     /** -1 = list is focused; 0 = Settings tile; 1+ = pinned contact tiles */
     val favoriteFocusIndex: Int = -1,
+    /** Drives the Calls nav-icon badge. Tab/filter-independent — see RecentsRepo.hasUnreadMissedCalls. */
+    val hasUnreadMissedCalls: Boolean = false,
 ) {
     val displayQuery: String
         get() = if (query.isEmpty()) ""
@@ -79,6 +82,15 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     private val callLogObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
+            recentsRepo.clearLookupCache()
+            forceRefresh()
+            refreshMissedCallBadge()
+        }
+    }
+
+    private val contactsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            contactsRepo.invalidate()
             recentsRepo.clearLookupCache()
             forceRefresh()
         }
@@ -112,6 +124,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private var callLogObserverRegistered = false
+    private var contactsObserverRegistered = false
 
     /** Tracks the last style we applied a default tab for, to detect theme changes. -1 = never applied. */
     private var lastDefaultTabStyle: Int = -1
@@ -180,17 +193,33 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         if (hasCallLogPermission()) {
             registerCallLogObserver()
             refreshFavorites()
+            refreshMissedCallBadge()
+        }
+        if (hasContactsPermission()) {
+            registerContactsObserver()
         }
         refreshBlockedNumbers()
     }
 
+    private fun refreshMissedCallBadge() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val hasUnread = recentsRepo.hasUnreadMissedCalls()
+            _uiState.update { it.copy(hasUnreadMissedCalls = hasUnread) }
+        }
+    }
+
     fun onPermissionsReady() {
         registerCallLogObserver()
+        registerContactsObserver()
         viewModelScope.launch(Dispatchers.IO) {
             try { contactsRepo.search("") } catch (_: SecurityException) { }
             blockedNumbersRepo.syncFromSystem()
             refreshBlockedNumbers()
             recentsRepo.markMissedCallsAsRead()
+            // Recompute right after marking read so the badge actually clears — previously
+            // nothing re-checked read-state after this call, so it had no visible effect.
+            val hasUnread = recentsRepo.hasUnreadMissedCalls()
+            _uiState.update { it.copy(hasUnreadMissedCalls = hasUnread) }
         }
         refreshFavorites()
         refreshBlockedNumbers()
@@ -206,10 +235,26 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         } catch (_: SecurityException) { }
     }
 
+    private fun registerContactsObserver() {
+        if (contactsObserverRegistered) return
+        try {
+            getApplication<Application>().contentResolver.registerContentObserver(
+                ContactsContract.Contacts.CONTENT_URI, true, contactsObserver
+            )
+            contactsObserverRegistered = true
+        } catch (_: SecurityException) { }
+    }
+
     private fun hasCallLogPermission(): Boolean =
         ContextCompat.checkSelfPermission(
             getApplication(),
             android.Manifest.permission.READ_CALL_LOG
+        ) == PackageManager.PERMISSION_GRANTED
+
+    private fun hasContactsPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            getApplication(),
+            android.Manifest.permission.READ_CONTACTS
         ) == PackageManager.PERMISSION_GRANTED
 
     // ── Query editing ────────────────────────────────────────────────────────
@@ -492,6 +537,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     override fun onCleared() {
         super.onCleared()
         getApplication<Application>().contentResolver.unregisterContentObserver(callLogObserver)
+        getApplication<Application>().contentResolver.unregisterContentObserver(contactsObserver)
     }
 
     // ── Call history ─────────────────────────────────────────────────────────
@@ -566,8 +612,13 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
                         ?: Contact(name = pinnedNum, number = pinnedNum)
                 }
 
+                // Order favorite tiles by how often the user interacts with them (all call
+                // types: incoming + outgoing + missed), not the DB's alphabetical order —
+                // stable sort keeps zero-call contacts in their original (alphabetical) order.
+                val callCounts = recentsRepo.getCallCountsByNumber()
                 val pinned = (starredContacts + appPinned)
                     .distinctBy { normalize(it.number) }
+                    .sortedByDescending { callCounts[normalize(it.number)] ?: 0 }
 
                 val pinnedDigits = HashSet<String>(pinned.size)
                 for (p in pinned) pinnedDigits.add(normalize(p.number))

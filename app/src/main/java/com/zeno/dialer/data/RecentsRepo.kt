@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.telephony.PhoneNumberUtils
 import com.zeno.dialer.BuildConfig
 
 class RecentsRepo(private val context: Context) {
@@ -52,7 +53,8 @@ class RecentsRepo(private val context: Context) {
                     CallLog.Calls.NUMBER,
                     CallLog.Calls.DATE,
                     CallLog.Calls.TYPE,
-                    CallLog.Calls.CACHED_PHOTO_URI
+                    CallLog.Calls.CACHED_PHOTO_URI,
+                    CallLog.Calls.IS_READ
                 ),
                 selection,
                 args.toTypedArray().ifEmpty { null },
@@ -69,11 +71,12 @@ class RecentsRepo(private val context: Context) {
         else minOf(500, maxOf(limit * 15, 200))
 
         cursor.use {
-            val nameCol  = it.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
-            val numCol   = it.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
-            val dateCol  = it.getColumnIndexOrThrow(CallLog.Calls.DATE)
-            val typeCol  = it.getColumnIndexOrThrow(CallLog.Calls.TYPE)
-            val photoCol = it.getColumnIndex(CallLog.Calls.CACHED_PHOTO_URI)
+            val nameCol   = it.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
+            val numCol    = it.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
+            val dateCol   = it.getColumnIndexOrThrow(CallLog.Calls.DATE)
+            val typeCol   = it.getColumnIndexOrThrow(CallLog.Calls.TYPE)
+            val photoCol  = it.getColumnIndex(CallLog.Calls.CACHED_PHOTO_URI)
+            val isReadCol = it.getColumnIndex(CallLog.Calls.IS_READ)
 
             while (it.moveToNext() && recents.size < fetchCap) {
                 val number = it.getString(numCol).orEmpty().trim()
@@ -81,6 +84,9 @@ class RecentsRepo(private val context: Context) {
 
                 val cachedName  = it.getString(nameCol).orEmpty().trim()
                 val cachedPhoto = if (photoCol >= 0) it.getString(photoCol) else null
+                // Missing column or unexpected null → treat as read so it can't get stuck
+                // showing an unread badge forever on OEMs that don't populate this column.
+                val isRead = if (isReadCol >= 0) it.getInt(isReadCol) != 0 else true
 
                 val resolvedName: String
                 val resolvedPhoto: String?
@@ -105,7 +111,8 @@ class RecentsRepo(private val context: Context) {
                         isRecent     = true,
                         lastCallTime = it.getLong(dateCol),
                         callType     = it.getInt(typeCol),
-                        photoUri     = resolvedPhoto
+                        photoUri     = resolvedPhoto,
+                        isCallLogRead = isRead
                     )
                 )
             }
@@ -123,10 +130,28 @@ class RecentsRepo(private val context: Context) {
     fun getHistoryForNumber(number: String, limit: Int = 100): List<Contact> {
         if (BuildConfig.DEBUG) {
             return PrototypeData.recents
-                .filter { it.number == number }
+                .filter { PhoneNumberUtils.compare(it.number, number) }
                 .take(limit)
         }
         if (number.isBlank()) return emptyList()
+
+        // Loose-match on number identity (PhoneNumberUtils.compare ignores country-code/
+        // formatting differences) rather than exact string equality — the same caller can be
+        // logged under different formats (e.g. "+15551234567" vs "5551234567") across calls.
+        // SQL LIKE on the trailing digits is a cheap superset prefilter; the real match happens
+        // in Kotlin below.
+        val digits = number.filter { it.isDigit() }
+        val suffix = digits.takeLast(7)
+        val selection: String?
+        val args: Array<String>?
+        if (suffix.length >= 7) {
+            selection = "${CallLog.Calls.NUMBER} LIKE ?"
+            args = arrayOf("%$suffix")
+        } else {
+            selection = null
+            args = null
+        }
+
         val cursor = try {
             context.contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
@@ -137,8 +162,8 @@ class RecentsRepo(private val context: Context) {
                     CallLog.Calls.TYPE,
                     CallLog.Calls.CACHED_PHOTO_URI
                 ),
-                "${CallLog.Calls.NUMBER} = ?",
-                arrayOf(number),
+                selection,
+                args,
                 "${CallLog.Calls.DATE} DESC"
             )
         } catch (e: SecurityException) { null } ?: return emptyList()
@@ -153,7 +178,8 @@ class RecentsRepo(private val context: Context) {
             val typeCol  = it.getColumnIndexOrThrow(CallLog.Calls.TYPE)
             val photoCol = it.getColumnIndex(CallLog.Calls.CACHED_PHOTO_URI)
             while (it.moveToNext() && history.size < limit) {
-                val num        = it.getString(numCol).orEmpty().trim()
+                val num = it.getString(numCol).orEmpty().trim()
+                if (!PhoneNumberUtils.compare(num, number)) continue
                 val cachedName = it.getString(nameCol).orEmpty().trim()
                 val cachedPhoto = if (photoCol >= 0) it.getString(photoCol) else null
                 val resolvedName  = cachedName.ifEmpty { lookupName }
@@ -172,6 +198,36 @@ class RecentsRepo(private val context: Context) {
         return history
     }
 
+    /**
+     * Total call count (incoming + outgoing + missed) per number, keyed by digit-normalized
+     * number, for ranking contacts by "how often you interact with them" (e.g. favorites order).
+     */
+    fun getCallCountsByNumber(): Map<String, Int> {
+        if (BuildConfig.DEBUG) {
+            return PrototypeData.recents
+                .groupingBy { it.number.filter(Char::isDigit) }
+                .eachCount()
+        }
+        val counts = HashMap<String, Int>()
+        val cursor = try {
+            context.contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                arrayOf(CallLog.Calls.NUMBER),
+                null, null, null
+            )
+        } catch (_: SecurityException) { null } ?: return counts
+
+        cursor.use {
+            val numCol = it.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
+            while (it.moveToNext()) {
+                val digits = it.getString(numCol).orEmpty().filter(Char::isDigit)
+                if (digits.isEmpty()) continue
+                counts[digits] = (counts[digits] ?: 0) + 1
+            }
+        }
+        return counts
+    }
+
     fun deleteByNumber(number: String): Int {
         if (BuildConfig.DEBUG) return 0
         if (number.isBlank()) return 0
@@ -182,6 +238,22 @@ class RecentsRepo(private val context: Context) {
                 arrayOf(number)
             ) ?: 0
         } catch (_: Exception) { 0 }
+    }
+
+    /**
+     * Tab/filter-independent check for the missed-calls nav badge — deliberately not derived
+     * from [search] results, since those reflect whatever filter/tab is currently active.
+     */
+    fun hasUnreadMissedCalls(): Boolean {
+        if (BuildConfig.DEBUG) return false
+        return try {
+            context.contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                arrayOf(CallLog.Calls._ID),
+                "${CallLog.Calls.TYPE} = ${CallLog.Calls.MISSED_TYPE} AND (${CallLog.Calls.IS_READ} = 0 OR ${CallLog.Calls.NEW} = 1)",
+                null, null
+            )?.use { it.count > 0 } ?: false
+        } catch (_: Exception) { false }
     }
 
     fun markMissedCallsAsRead() {

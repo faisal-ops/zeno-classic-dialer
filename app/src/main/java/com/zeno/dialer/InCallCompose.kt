@@ -260,7 +260,7 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
 
     val coroutineScope = rememberCoroutineScope()
 
-    fun startRecording(displayName: String, number: String) {
+    fun startRecording(call: Call, displayName: String, number: String) {
         val svc = com.zeno.dialer.service.MyInCallService.instance
         val wasSpeaker = svc?.isSpeakerOn() ?: false
         if (!wasSpeaker) {
@@ -270,7 +270,7 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
         // Delay 300ms to let audio routing settle before starting capture.
         coroutineScope.launch {
             kotlinx.coroutines.delay(300)
-            val path = CallRecorder.start(context.applicationContext, displayName, number)
+            val path = CallRecorder.start(context.applicationContext, displayName, number, call)
             recordingActive = CallRecorder.isRecording
             if (path == null) {
                 if (speakerEnabledForRecording) {
@@ -292,7 +292,7 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
             return@rememberLauncherForActivityResult
         }
         val i = CallStateHolder.info.value ?: return@rememberLauncherForActivityResult
-        startRecording(i.displayName, i.number)
+        startRecording(i.call, i.displayName, i.number)
     }
 
     LaunchedEffect(info?.state) {
@@ -416,10 +416,12 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
                     com.zeno.dialer.service.MyInCallService.instance?.applySpeaker(speakerOn)
                 },
                 onKeypad = {
+                    // NEW_TASK required for REORDER_TO_FRONT to find MainActivity's separate
+                    // taskAffinity task rather than stacking a duplicate on this task.
                     context.startActivity(
                         Intent(context, MainActivity::class.java).apply {
                             putExtra("open_keypad", true)
-                            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                         }
                     )
                 },
@@ -450,15 +452,17 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
                     ) {
                         recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     } else {
-                        startRecording(displayName, number)
+                        info?.call?.let { startRecording(it, displayName, number) }
                     }
                 },
                 onAddCall = {
                     CallStateHolder.hold()
+                    // NEW_TASK required for REORDER_TO_FRONT to find MainActivity's separate
+                    // taskAffinity task rather than stacking a duplicate on this task.
                     context.startActivity(
                         Intent(context, MainActivity::class.java).apply {
                             putExtra("open_keypad", true)
-                            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                         }
                     )
                 },
@@ -1254,10 +1258,13 @@ private fun PixelInCallContent(
                             label   = stringResource(R.string.dial_pad),
                             color   = TextSecondary,
                             onClick = {
+                                // NEW_TASK required for REORDER_TO_FRONT to find MainActivity's
+                                // separate taskAffinity task rather than stacking a duplicate here.
                                 context.startActivity(
                                     android.content.Intent(context, MainActivity::class.java).apply {
                                         putExtra("open_keypad", true)
-                                        flags = android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                                     }
                                 )
                             }
@@ -1271,7 +1278,7 @@ private fun PixelInCallContent(
                         )
                     }
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(20.dp))
 
                     // Row 2: Add Call | End Call | Hold
                     Row(
@@ -1286,10 +1293,13 @@ private fun PixelInCallContent(
                             color   = TextSecondary,
                             onClick = {
                                 CallStateHolder.hold()
+                                // NEW_TASK required for REORDER_TO_FRONT to find MainActivity's
+                                // separate taskAffinity task rather than stacking a duplicate here.
                                 context.startActivity(
                                     android.content.Intent(context, MainActivity::class.java).apply {
                                         putExtra("open_keypad", true)
-                                        flags = android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                                     }
                                 )
                             }
@@ -1328,11 +1338,11 @@ private fun PixelSmallActionButton(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier            = Modifier.width(64.dp)
+        modifier            = Modifier.width(76.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(60.dp)
                 .clip(CircleShape)
                 .background(bgColor)
                 .clickable { onClick() },
@@ -1342,14 +1352,14 @@ private fun PixelSmallActionButton(
                 imageVector        = icon,
                 contentDescription = label,
                 tint               = color,
-                modifier           = Modifier.size(22.dp)
+                modifier           = Modifier.size(28.dp)
             )
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text      = label,
             color     = TextSecondary,
-            fontSize  = 11.sp,
+            fontSize  = 12.sp,
             textAlign = TextAlign.Center,
             maxLines  = 1
         )

@@ -144,16 +144,9 @@ object FuzzySearch {
         val initCap = if (limit < Int.MAX_VALUE / 2) minOf(indexed.size, limit * 2) else indexed.size
         val scored = ArrayList<Pair<Contact, Int>>(initCap)
         for (ic in indexed) {
-            val nameScore = scoreIndexed(queryLower, queryDigits, ic)
-            val numScore = if (queryDigits.isNotEmpty() && ic.numberDigits.isNotEmpty()) {
-                when {
-                    ic.numberDigits == queryDigits -> 100
-                    ic.numberDigits.startsWith(queryDigits) || ic.numberDigits.contains(queryDigits) -> 90
-                    queryDigits.startsWith(ic.numberDigits) && ic.numberDigits.length >= 4 -> 82
-                    else -> 0
-                }
-            } else 0
-            val s = maxOf(nameScore, numScore)
+            // scoreIndexed() already checks numberDigits first (100/90/82 tiers) before falling
+            // back to name matching, so re-deriving a separate numScore here was always <= it.
+            val s = scoreIndexed(queryLower, queryDigits, ic)
             if (s > 0) scored.add(ic.contact to s)
         }
         scored.sortByDescending { it.second }

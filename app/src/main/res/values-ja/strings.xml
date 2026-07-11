@@ -13,6 +13,9 @@
 
     <!-- Main UI -->
     <string name="search_contacts">連絡先を検索</string>
+    <string name="dialpad_key_star">星</string>
+    <string name="dialpad_key_pound">井桁</string>
+    <string name="dialpad_key_description">ダイヤルパッドキー %1$s</string>
     <string name="no_contacts">連絡先なし</string>
     <string name="no_history">履歴なし</string>
     <string name="no_results">結果なし</string>
@@ -20,10 +23,8 @@
     <string name="clear">クリア</string>
     <string name="cancel">キャンセル</string>
     <string name="delete">削除</string>
-    <string name="ok">OK</string>
     <string name="pasted">貼り付け済み</string>
     <string name="nothing_to_paste">貼り付けるものがありません</string>
-    <string name="copied">コピー済み</string>
     <string name="menu">メニュー</string>
     <string name="voice_search">音声検索</string>
     <string name="voice_search_prompt">連絡先を検索…</string>
@@ -72,9 +73,6 @@
     <string name="enter_number">番号を入力</string>
     <string name="add_contact">連絡先を追加</string>
     <string name="backspace">削除</string>
-    <string name="dialpad_paste">貼り付け</string>
-    <string name="dialpad_paste_hint">クリップボードから</string>
-    <string name="dialpad_copy_hint">フィールドの番号</string>
     <string name="dialpad_number_bar_a11y">番号入力；長押しで貼り付けまたはコピー</string>
 
     <!-- In-Call -->
@@ -112,6 +110,10 @@
     <string name="quick_reply_templates">クイック返信テンプレート</string>
     <string name="write_your_own">自分で入力…</string>
     <string name="send_message_to">メッセージを送信</string>
+    <string name="quick_response_default_1">今話せません。どうしたの?</string>
+    <string name="quick_response_default_2">すぐに折り返します。</string>
+    <string name="quick_response_default_3">後で電話します。</string>
+    <string name="quick_response_default_4">今話せません。後でかけ直してもらえますか?</string>
 
     <!-- Settings -->
     <string name="settings">設定</string>
@@ -136,7 +138,14 @@
     <string name="version_label">バージョン %1$s</string>
     <string name="clear_history">通話履歴を削除</string>
     <string name="clear_history_confirm_title">通話履歴を削除しますか？</string>
-    <string name="clear_history_confirm_msg">すべての通話ログエントリが完全に削除されます。</string>
+    <string name="clear_history_confirm_msg_scoped">%1$sが完全に削除されます。</string>
+    <string name="clear_history_scope_all">すべての通話</string>
+    <string name="clear_history_scope_missed">不在着信</string>
+    <string name="clear_history_scope_received">着信</string>
+    <string name="clear_history_scope_dialed">発信</string>
+    <string name="external_keyboard_bridge">外付けキーボードの通話ボタン</string>
+    <string name="external_keyboard_bridge_desc">ペアリングされたハードウェアキーボードケースアプリに通話の応答・終了・発信を許可します</string>
+    <string name="external_keyboard_bridge_info">Q25などのハードウェアキーボードケース向けに既定でオンになっています。どのアプリもこの信号を送信できます — 使用していない場合のみオフにしてください。</string>
     <string name="see_caller_spam_id">発信者とスパムIDを表示</string>
     <string name="see_caller_spam_id_desc">ビジネス番号とスパム番号を識別</string>
     <string name="filter_spam">スパム通話をフィルタリング</string>
@@ -171,8 +180,6 @@
     <string name="contact_calling_card_desc">連絡先から電話があったときの名前と画像の表示方法</string>
     <string name="back">戻る</string>
     <string name="more">その他</string>
-    <string name="mobile">携帯</string>
-    <string name="work">仕事</string>
 
     <!-- Permissions / Prompts -->
     <string name="phone_permission_required">電話の権限が必要です</string>

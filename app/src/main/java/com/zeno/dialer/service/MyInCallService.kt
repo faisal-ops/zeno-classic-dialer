@@ -4,17 +4,27 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.speech.tts.TextToSpeech
 import android.telecom.Call
 import android.telecom.InCallService
+import android.telecom.TelecomManager
 import com.zeno.dialer.ActiveCallInfo
+import com.zeno.dialer.AppPreferences
 import com.zeno.dialer.BroadcastActions
 import com.zeno.dialer.CallStateHolder
 import com.zeno.dialer.InCallActivity
@@ -61,7 +71,89 @@ class MyInCallService : InCallService() {
     @Volatile
     private var incomingCallUiForeground = false
 
-    private val lastKnownStates = ConcurrentHashMap<Call, Int>()
+    // ── Flip-to-silence ──────────────────────────────────────────────────────
+    private var sensorManager: SensorManager? = null
+    private var accelerometer: Sensor? = null
+    private var flipToSilenceRegistered = false
+
+    private val flipToSilenceListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            if (event.values.size < 3) return
+            // Face-down (screen toward a flat surface): z-axis reads close to -g.
+            if (event.values[2] < -7f && CallStateHolder.info.value?.state == Call.STATE_RINGING) {
+                silenceRingerSafely()
+                unregisterFlipToSilenceListener()
+            }
+        }
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    }
+
+    /** Registers/unregisters the accelerometer listener based on current ringing state + setting. */
+    private fun updateFlipToSilenceListener() {
+        val ringing = CallStateHolder.info.value?.state == Call.STATE_RINGING
+        val enabled = getSharedPreferences(AppPreferences.FILE_SETTINGS, Context.MODE_PRIVATE)
+            .getBoolean(AppPreferences.KEY_FLIP_TO_SILENCE, false)
+        if (ringing && enabled) registerFlipToSilenceListener() else unregisterFlipToSilenceListener()
+    }
+
+    private fun registerFlipToSilenceListener() {
+        if (flipToSilenceRegistered) return
+        val sensor = accelerometer ?: return
+        flipToSilenceRegistered = sensorManager?.registerListener(
+            flipToSilenceListener, sensor, SensorManager.SENSOR_DELAY_NORMAL
+        ) ?: false
+    }
+
+    private fun unregisterFlipToSilenceListener() {
+        if (!flipToSilenceRegistered) return
+        sensorManager?.unregisterListener(flipToSilenceListener)
+        flipToSilenceRegistered = false
+    }
+
+    // TelecomManager#silenceRinger is annotated as requiring MODIFY_PHONE_STATE, but Telecom
+    // grants it to the current default dialer as well (which this InCallService always is while
+    // running) — MODIFY_PHONE_STATE itself is a signature permission apps can't hold. Guarded
+    // with try/catch since we can't declare the permission to satisfy lint statically.
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun silenceRingerSafely() {
+        try {
+            getSystemService(TelecomManager::class.java)?.silenceRinger()
+        } catch (_: SecurityException) {
+        }
+    }
+
+    // ── Caller ID announcement ──────────────────────────────────────────────
+    private var tts: TextToSpeech? = null
+    @Volatile private var ttsReady = false
+    private val announcedCalls = java.util.Collections.newSetFromMap(ConcurrentHashMap<Call, Boolean>())
+
+    /** Speaks the caller's name/number once per ringing call, per the Caller ID announcement setting. */
+    private fun maybeAnnounceCallerId(call: Call) {
+        if (call.state != Call.STATE_RINGING) return
+        if (!announcedCalls.add(call)) return // already announced this call
+
+        val mode = getSharedPreferences(AppPreferences.FILE_SETTINGS, Context.MODE_PRIVATE)
+            .getInt(AppPreferences.KEY_CALLER_ID_ANNOUNCE, 0) // 0=never, 1=always, 2=headset only
+        if (mode == 0) return
+        if (mode == 2 && !isHeadsetConnected()) return
+
+        val info = CallStateHolder.info.value ?: return
+        if (info.call !== call) return
+        if (!ttsReady) return
+
+        val text = "${getString(R.string.incoming_call)}, ${info.displayName}"
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "zeno_caller_id_announce")
+    }
+
+    private fun isHeadsetConnected(): Boolean {
+        val am = getSystemService(AudioManager::class.java) ?: return false
+        return am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any {
+            it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
+        }
+    }
 
     fun setIncomingCallUiForeground(foreground: Boolean) {
         if (incomingCallUiForeground == foreground) return
@@ -71,8 +163,6 @@ class MyInCallService : InCallService() {
 
     private val callCallback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
-            lastKnownStates[call] = state
-
             // Outgoing call "other end picked up": state transition to ACTIVE.
             if (state == Call.STATE_ACTIVE) {
                 val shouldVibrate = takeOutgoingActiveVibrationArmIfFresh(maxAgeMs = 90_000L)
@@ -85,6 +175,8 @@ class MyInCallService : InCallService() {
 
             CallStateHolder.update(call, this@MyInCallService)
             updateNotification()
+            updateFlipToSilenceListener()
+            maybeAnnounceCallerId(call)
         }
         override fun onDetailsChanged(call: Call, details: Call.Details) {
             CallStateHolder.update(call, this@MyInCallService)
@@ -96,6 +188,9 @@ class MyInCallService : InCallService() {
         super.onCreate()
         instance = this
         notifManager = getSystemService(NotificationManager::class.java)
+        sensorManager = getSystemService(SensorManager::class.java)
+        accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        tts = TextToSpeech(this) { status -> ttsReady = status == TextToSpeech.SUCCESS }
 
         notifManager.createNotificationChannel(
             NotificationChannel(
@@ -136,6 +231,8 @@ class MyInCallService : InCallService() {
         CallStateHolder.update(call, this)
         call.registerCallback(callCallback)
         updateNotification()
+        updateFlipToSilenceListener()
+        maybeAnnounceCallerId(call)
 
         startActivity(
             Intent(this, InCallActivity::class.java).apply {
@@ -148,6 +245,9 @@ class MyInCallService : InCallService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterFlipToSilenceListener()
+        tts?.shutdown()
+        tts = null
         instance = null
     }
 
@@ -163,9 +263,14 @@ class MyInCallService : InCallService() {
         super.onCallRemoved(call)
         call.unregisterCallback(callCallback)
         CallStateHolder.remove(call)
-        lastKnownStates.remove(call)
-        if (calls.isEmpty()) {
+        announcedCalls.remove(call)
+        // Stop recording as soon as the specific call being recorded ends — even if another
+        // call is still active — so recording never silently bleeds into a different call.
+        if (CallRecorder.isRecordingCall(call)) {
             CallRecorder.stop(this)
+        }
+        updateFlipToSilenceListener()
+        if (calls.isEmpty()) {
             CallStateHolder.clear()
             notifManager.cancel(NOTIFICATION_ID)
         } else {

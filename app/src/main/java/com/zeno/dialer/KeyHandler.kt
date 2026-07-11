@@ -4,7 +4,6 @@ import android.view.KeyEvent
 import android.util.Log
 import android.os.SystemClock
 import com.zeno.dialer.data.Contact
-import com.zeno.dialer.FavoritesScrollController
 
 class KeyHandler(
     private val viewModel: DialerViewModel,

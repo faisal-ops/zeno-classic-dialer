@@ -13,6 +13,9 @@
 
     <!-- Main UI -->
     <string name="search_contacts">Kontakte suchen</string>
+    <string name="dialpad_key_star">Stern</string>
+    <string name="dialpad_key_pound">Raute</string>
+    <string name="dialpad_key_description">Wähltastenfeld-Taste %1$s</string>
     <string name="no_contacts">Keine Kontakte</string>
     <string name="no_history">Kein Verlauf</string>
     <string name="no_results">Keine Ergebnisse</string>
@@ -20,10 +23,8 @@
     <string name="clear">Löschen</string>
     <string name="cancel">Abbrechen</string>
     <string name="delete">Entfernen</string>
-    <string name="ok">OK</string>
     <string name="pasted">Eingefügt</string>
     <string name="nothing_to_paste">Nichts zum Einfügen</string>
-    <string name="copied">Kopiert</string>
     <string name="menu">Menü</string>
     <string name="voice_search">Sprachsuche</string>
     <string name="voice_search_prompt">Kontakte suchen…</string>
@@ -72,9 +73,6 @@
     <string name="enter_number">Nummer eingeben</string>
     <string name="add_contact">Kontakt hinzufügen</string>
     <string name="backspace">Rücktaste</string>
-    <string name="dialpad_paste">Einfügen</string>
-    <string name="dialpad_paste_hint">Aus Zwischenablage</string>
-    <string name="dialpad_copy_hint">Nummer im Feld</string>
     <string name="dialpad_number_bar_a11y">Nummereingabe; gedrückt halten zum Einfügen oder Kopieren</string>
 
     <!-- In-Call -->
@@ -112,6 +110,10 @@
     <string name="quick_reply_templates">Schnellantworttemplates</string>
     <string name="write_your_own">Eigene schreiben…</string>
     <string name="send_message_to">Nachricht senden an</string>
+    <string name="quick_response_default_1">Kann jetzt nicht sprechen. Was gibt\'s?</string>
+    <string name="quick_response_default_2">Ich rufe dich gleich zurück.</string>
+    <string name="quick_response_default_3">Ich rufe dich später an.</string>
+    <string name="quick_response_default_4">Kann jetzt nicht sprechen. Ruf mich später an?</string>
 
     <!-- Settings -->
     <string name="settings">Einstellungen</string>
@@ -136,7 +138,14 @@
     <string name="version_label">Version %1$s</string>
     <string name="clear_history">Anrufverlauf löschen</string>
     <string name="clear_history_confirm_title">Anrufverlauf löschen?</string>
-    <string name="clear_history_confirm_msg">Alle Einträge im Anrufprotokoll werden dauerhaft gelöscht.</string>
+    <string name="clear_history_confirm_msg_scoped">%1$s werden dauerhaft gelöscht.</string>
+    <string name="clear_history_scope_all">Alle Anrufe</string>
+    <string name="clear_history_scope_missed">Verpasste Anrufe</string>
+    <string name="clear_history_scope_received">Angenommene Anrufe</string>
+    <string name="clear_history_scope_dialed">Gewählte Anrufe</string>
+    <string name="external_keyboard_bridge">Anruftaste der externen Tastatur</string>
+    <string name="external_keyboard_bridge_desc">Erlaubt einer gekoppelten Hardware-Tastatur-Hülle, Anrufe anzunehmen, zu beenden oder zu tätigen</string>
+    <string name="external_keyboard_bridge_info">Standardmäßig aktiviert für Hardware-Tastaturhüllen wie die Q25. Jede App kann dieses Signal senden — nur deaktivieren, wenn du keine verwendest.</string>
     <string name="see_caller_spam_id">Anrufer- und Spam-ID anzeigen</string>
     <string name="see_caller_spam_id_desc">Geschäfts- und Spam-Nummern identifizieren</string>
     <string name="filter_spam">Spam-Anrufe filtern</string>
@@ -171,8 +180,6 @@
     <string name="contact_calling_card_desc">Wie Sie den Namen und das Bild Ihres Kontakts sehen, wenn er anruft</string>
     <string name="back">Zurück</string>
     <string name="more">Mehr</string>
-    <string name="mobile">Mobil</string>
-    <string name="work">Arbeit</string>
 
     <!-- Permissions / Prompts -->
     <string name="phone_permission_required">Telefonberechtigung erforderlich</string>

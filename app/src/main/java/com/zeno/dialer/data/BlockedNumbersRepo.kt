@@ -40,15 +40,21 @@ class BlockedNumbersRepo(private val context: Context) {
     fun contains(number: String): Boolean = normalize(number) in getAll()
 
     /**
-     * Pull any numbers already blocked in the platform [BlockedNumbers] provider into the
-     * local prefs list. Call once after the default-dialer role is granted so pre-existing
-     * system blocks are visible in-app without the user having to re-add them.
+     * Reconcile the local prefs list against the platform [BlockedNumbers] provider — the
+     * "Blocked numbers" settings entry point opens the *system* management screen directly
+     * (see [com.zeno.dialer.SettingsActivity]), so that's the primary place users add/remove
+     * blocks. Called on every app resume via `onPermissionsReady()`.
+     *
+     * Bidirectional, but safely: a number is only removed locally if it was seen in the system
+     * list on a *previous* sync and is now gone (i.e. the user unblocked it via system Settings).
+     * Numbers added locally whose system mirror write failed (e.g. role not held yet) are left
+     * alone rather than being silently dropped — we only "trust" system state we've actually seen.
      */
     fun syncFromSystem() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
         try {
             val systemNumbers = mutableSetOf<String>()
-            context.contentResolver.query(
+            val queried = context.contentResolver.query(
                 BlockedNumbers.CONTENT_URI,
                 arrayOf(BlockedNumbers.COLUMN_ORIGINAL_NUMBER),
                 null, null, null
@@ -57,11 +63,20 @@ class BlockedNumbersRepo(private val context: Context) {
                     val num = normalize(cursor.getString(0) ?: continue)
                     if (num.isNotBlank()) systemNumbers.add(num)
                 }
+                true
+            } ?: false
+            if (!queried) return
+
+            val local = getAll()
+            val lastKnownSystem = prefs.getStringSet(KEY_LAST_SYNCED_SYSTEM, emptySet()).orEmpty()
+
+            val removedRemotely = local.filter { it in lastKnownSystem && it !in systemNumbers }.toSet()
+            val addedRemotely = systemNumbers - local
+
+            if (removedRemotely.isNotEmpty() || addedRemotely.isNotEmpty()) {
+                save((local - removedRemotely) + addedRemotely)
             }
-            if (systemNumbers.isEmpty()) return
-            val local = getAll().toMutableSet()
-            val added = systemNumbers - local
-            if (added.isNotEmpty()) save(local + added)
+            prefs.edit().putStringSet(KEY_LAST_SYNCED_SYSTEM, systemNumbers).apply()
         } catch (_: SecurityException) {
         } catch (_: Exception) {
         }
@@ -88,32 +103,50 @@ class BlockedNumbersRepo(private val context: Context) {
         } catch (_: SecurityException) {
         } catch (_: IllegalArgumentException) {
         } catch (_: UnsupportedOperationException) {
+        } catch (_: Exception) {
         }
     }
 
+    /**
+     * Deletes every system-provider row whose stored number normalizes to [normalizedDigits],
+     * rather than guessing at specific formats — a number added via the system "Blocked
+     * numbers" UI, another dialer, or with punctuation intact may not be stored as bare digits
+     * or "+digits", and a miss here leaves the number silently blocked at the OS level even
+     * after the user "unblocks" it in Zeno.
+     */
     private fun syncRemoveFromSystem(normalizedDigits: String) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
         try {
-            val n = context.contentResolver.delete(
+            val resolver = context.contentResolver
+            val matches = mutableListOf<String>()
+            resolver.query(
                 BlockedNumbers.CONTENT_URI,
-                "${BlockedNumbers.COLUMN_ORIGINAL_NUMBER}=?",
-                arrayOf(normalizedDigits)
-            )
-            if (n > 0) return
-            // Some builds match on formatted numbers — try common variants.
-            context.contentResolver.delete(
-                BlockedNumbers.CONTENT_URI,
-                "${BlockedNumbers.COLUMN_ORIGINAL_NUMBER}=?",
-                arrayOf("+${normalizedDigits}")
-            )
+                arrayOf(BlockedNumbers.COLUMN_ORIGINAL_NUMBER),
+                null, null, null
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val original = cursor.getString(0) ?: continue
+                    if (normalize(original) == normalizedDigits) matches.add(original)
+                }
+            }
+            for (original in matches) {
+                resolver.delete(
+                    BlockedNumbers.CONTENT_URI,
+                    "${BlockedNumbers.COLUMN_ORIGINAL_NUMBER}=?",
+                    arrayOf(original)
+                )
+            }
         } catch (_: SecurityException) {
         } catch (_: IllegalArgumentException) {
         } catch (_: UnsupportedOperationException) {
+        } catch (_: Exception) {
         }
     }
 
     private companion object {
         private const val KEY_BLOCKED_NUMBERS = "blocked_numbers"
         private const val SEPARATOR = "|:|"
+        /** Snapshot of the system-provider numbers seen on the last successful [syncFromSystem]. */
+        private const val KEY_LAST_SYNCED_SYSTEM = "blocked_numbers_last_synced_system"
     }
 }

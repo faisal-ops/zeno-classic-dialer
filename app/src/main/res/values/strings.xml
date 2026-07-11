@@ -13,6 +13,9 @@
 
     <!-- Main UI -->
     <string name="search_contacts">Search contacts</string>
+    <string name="dialpad_key_star">star</string>
+    <string name="dialpad_key_pound">pound</string>
+    <string name="dialpad_key_description">Dial pad key %1$s</string>
     <string name="no_contacts">No contacts</string>
     <string name="no_history">No history</string>
     <string name="no_results">No results</string>
@@ -20,10 +23,8 @@
     <string name="clear">Clear</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
-    <string name="ok">OK</string>
     <string name="pasted">Pasted</string>
     <string name="nothing_to_paste">Nothing to paste</string>
-    <string name="copied">Copied</string>
     <string name="menu">Menu</string>
     <string name="voice_search">Voice search</string>
     <string name="voice_search_prompt">Search contacts…</string>
@@ -72,9 +73,6 @@
     <string name="enter_number">Enter Number</string>
     <string name="add_contact">Add contact</string>
     <string name="backspace">Backspace</string>
-    <string name="dialpad_paste">Paste</string>
-    <string name="dialpad_paste_hint">From clipboard</string>
-    <string name="dialpad_copy_hint">Number in field</string>
     <string name="dialpad_number_bar_a11y">Number entry; long-press for paste or copy</string>
 
     <!-- In-Call -->
@@ -112,6 +110,10 @@
     <string name="quick_reply_templates">Quick reply templates</string>
     <string name="write_your_own">Write your own…</string>
     <string name="send_message_to">Send message to</string>
+    <string name="quick_response_default_1">Can\'t talk now. What\'s up?</string>
+    <string name="quick_response_default_2">I\'ll call you right back.</string>
+    <string name="quick_response_default_3">I\'ll call you later.</string>
+    <string name="quick_response_default_4">Can\'t talk now. Call me later?</string>
 
     <!-- Settings -->
     <string name="settings">Settings</string>
@@ -136,7 +138,14 @@
     <string name="version_label">Version %1$s</string>
     <string name="clear_history">Clear call history</string>
     <string name="clear_history_confirm_title">Clear call history?</string>
-    <string name="clear_history_confirm_msg">All call log entries will be permanently deleted.</string>
+    <string name="clear_history_confirm_msg_scoped">%1$s will be permanently deleted.</string>
+    <string name="clear_history_scope_all">All calls</string>
+    <string name="clear_history_scope_missed">Missed calls</string>
+    <string name="clear_history_scope_received">Received calls</string>
+    <string name="clear_history_scope_dialed">Dialed calls</string>
+    <string name="external_keyboard_bridge">External keyboard call button</string>
+    <string name="external_keyboard_bridge_desc">Let a paired hardware-keyboard case app answer, end, or place calls</string>
+    <string name="external_keyboard_bridge_info">On by default for hardware keyboard cases (e.g. Q25). Any app can send this signal — disable only if you don\'t use one.</string>
     <string name="see_caller_spam_id">See caller and spam ID</string>
     <string name="see_caller_spam_id_desc">Identify business and spam numbers</string>
     <string name="filter_spam">Filter spam calls</string>
@@ -171,8 +180,6 @@
     <string name="contact_calling_card_desc">How you see your contact\u2019s name and image when they call</string>
     <string name="back">Back</string>
     <string name="more">More</string>
-    <string name="mobile">Mobile</string>
-    <string name="work">Work</string>
 
     <!-- Permissions / Prompts -->
     <string name="phone_permission_required">Phone permission required</string>

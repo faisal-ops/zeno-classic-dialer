@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Zeno Classic Dialer</string>
+    <string name="accessibility_description">통화 및 종료 툴바 버튼으로 번호를 걸고 다이얼러를 닫을 수 있도록 허용합니다.</string>
+
+    <!-- Tabs -->
+    <string name="tab_calls">통화</string>
+    <string name="tab_contacts">연락처</string>
+    <string name="tab_dial_pad">다이얼 패드</string>
+    <string name="tab_favorites">즐겨찾기</string>
+    <string name="tab_home">홈</string>
+    <string name="tab_keypad">키패드</string>
+
+    <!-- Main UI -->
+    <string name="search_contacts">연락처 검색</string>
+    <string name="dialpad_key_star">별표</string>
+    <string name="dialpad_key_pound">샵</string>
+    <string name="dialpad_key_description">다이얼 패드 키 %1$s</string>
+    <string name="no_contacts">연락처 없음</string>
+    <string name="no_history">기록 없음</string>
+    <string name="no_results">결과 없음</string>
+    <string name="recent_empty_hint">최근 통화 및 연락처가 여기에 표시됩니다</string>
+    <string name="clear">지우기</string>
+    <string name="cancel">취소</string>
+    <string name="delete">삭제</string>
+    <string name="pasted">붙여넣음</string>
+    <string name="nothing_to_paste">붙여넣을 내용 없음</string>
+    <string name="menu">메뉴</string>
+    <string name="voice_search">음성 검색</string>
+    <string name="voice_search_prompt">연락처 검색…</string>
+
+    <!-- Call Log / History -->
+    <string name="filter_all">전체</string>
+    <string name="filter_missed">부재중</string>
+    <string name="filter_received">수신</string>
+    <string name="filter_contacts">연락처</string>
+    <string name="filter_recents">최근 기록</string>
+    <string name="today">오늘</string>
+    <string name="yesterday">어제</string>
+    <string name="just_now">방금 전</string>
+    <string name="min_ago">%1$d분 전</string>
+    <string name="hr_ago">%1$d시간 전</string>
+    <string name="days_ago">%1$d일 전</string>
+    <string name="m_ago">%1$d분 전</string>
+    <string name="h_ago">%1$d시간 전</string>
+    <string name="d_ago">%1$d일 전</string>
+
+    <!-- Call Actions -->
+    <string name="call">통화</string>
+    <string name="message">메시지</string>
+    <string name="history">기록</string>
+    <string name="edit_contact">연락처 편집</string>
+    <string name="add_to_contacts">연락처에 추가</string>
+    <string name="add_to_favorites">즐겨찾기에 추가</string>
+    <string name="remove_from_blocked">차단 목록에서 제거</string>
+    <string name="add_to_blocked">차단 목록에 추가</string>
+    <string name="copy_number">번호 복사</string>
+    <string name="view_call_history">통화 기록 보기</string>
+    <string name="delete_from_log">기록에서 삭제</string>
+    <string name="delete_log_confirm_title">통화 기록을 삭제할까요?</string>
+    <string name="delete_log_confirm_msg">%1$s의 모든 통화 기록이 영구적으로 삭제됩니다.</string>
+    <string name="see_more_in_history">기록에서 더 보기</string>
+
+    <!-- Favorites -->
+    <string name="pinned">고정됨</string>
+    <string name="suggestions">추천</string>
+    <string name="no_suggestions">아직 추천 항목이 없습니다</string>
+    <string name="pin_hint">아래 연락처를 길게 눌러 여기에 고정하세요</string>
+    <string name="pin">고정</string>
+    <string name="unpin">고정 해제</string>
+
+    <!-- Dialpad -->
+    <string name="enter_number">번호 입력</string>
+    <string name="add_contact">연락처 추가</string>
+    <string name="backspace">지우기</string>
+    <string name="dialpad_number_bar_a11y">번호 입력란; 길게 눌러 붙여넣기 또는 복사</string>
+
+    <!-- In-Call -->
+    <string name="answer">응답</string>
+    <string name="decline">거절</string>
+    <string name="end">종료</string>
+    <string name="end_call">통화 종료</string>
+    <string name="speaker">스피커</string>
+    <string name="mute">음소거</string>
+    <string name="dial_pad">다이얼 패드</string>
+    <string name="hold">보류</string>
+    <string name="unhold">보류 해제</string>
+    <string name="record">녹음</string>
+    <string name="add_a_call">통화 추가</string>
+    <string name="active_call">통화 중</string>
+    <string name="on_hold">보류 중</string>
+    <string name="calling">전화 거는 중…</string>
+    <string name="in_call">통화 중</string>
+    <string name="incoming_call">수신 전화</string>
+    <string name="missed_call">부재중 전화</string>
+    <string name="outgoing_call">발신 전화</string>
+    <string name="blocked_call">차단된 전화</string>
+    <string name="rejected_call">거절된 전화</string>
+    <string name="connecting">연결 중…</string>
+    <string name="call_ended">통화 종료됨</string>
+    <string name="ending">종료 중…</string>
+    <string name="switch_call">통화 전환</string>
+    <string name="recording_started">녹음이 시작되었습니다 — 양쪽을 녹음하기 위해 스피커가 켜졌습니다</string>
+    <string name="recording_saved">녹음이 저장되었습니다</string>
+    <string name="recording_error">녹음이 종료되었습니다(파일이 너무 짧거나 오류 발생)</string>
+    <string name="could_not_start_recording">녹음을 시작할 수 없습니다</string>
+    <string name="mic_permission_required">녹음하려면 마이크 권한이 필요합니다</string>
+    <string name="sms_permission_required">빠른 답장을 보내려면 SMS 권한이 필요합니다</string>
+    <string name="message_sent">메시지를 보냈습니다</string>
+    <string name="quick_reply_templates">빠른 답장 템플릿</string>
+    <string name="write_your_own">직접 작성…</string>
+    <string name="send_message_to">메시지 보내기</string>
+    <string name="quick_response_default_1">지금은 통화할 수 없어요. 무슨 일이에요?</string>
+    <string name="quick_response_default_2">바로 다시 전화할게요.</string>
+    <string name="quick_response_default_3">나중에 전화할게요.</string>
+    <string name="quick_response_default_4">지금은 통화할 수 없어요. 나중에 전화 주시겠어요?</string>
+
+    <!-- Settings -->
+    <string name="settings">설정</string>
+    <string name="call_assist">통화 지원</string>
+    <string name="caller_id_spam">발신자 표시 및 스팸</string>
+    <string name="general">일반</string>
+    <string name="accessibility">접근성</string>
+    <string name="assisted_dialing">보조 다이얼링</string>
+    <string name="blocked_numbers">차단된 번호</string>
+    <string name="calls">통화</string>
+    <string name="display_options">화면 옵션</string>
+    <string name="quick_reply_templates_title">빠른 답장 템플릿</string>
+    <string name="sounds_vibration">소리 및 진동</string>
+    <string name="voicemail">음성사서함</string>
+    <string name="contact_ringtones">연락처 벨소리</string>
+    <string name="calling_card">명함</string>
+    <string name="advanced">고급</string>
+    <string name="caller_id_announcement">발신자 표시 음성 안내</string>
+    <string name="flip_to_silence">뒤집어서 무음</string>
+    <string name="about">정보</string>
+    <string name="about_app">Zeno Classic Dialer 정보</string>
+    <string name="version_label">버전 %1$s</string>
+    <string name="clear_history">통화 기록 지우기</string>
+    <string name="clear_history_confirm_title">통화 기록을 지울까요?</string>
+    <string name="clear_history_confirm_msg_scoped">%1$s이(가) 영구적으로 삭제됩니다.</string>
+    <string name="clear_history_scope_all">모든 통화</string>
+    <string name="clear_history_scope_missed">부재중 전화</string>
+    <string name="clear_history_scope_received">수신 전화</string>
+    <string name="clear_history_scope_dialed">발신 전화</string>
+    <string name="external_keyboard_bridge">외장 키보드 통화 버튼</string>
+    <string name="external_keyboard_bridge_desc">페어링된 하드웨어 키보드 케이스 앱이 전화를 받거나 끊거나 걸 수 있도록 허용합니다</string>
+    <string name="external_keyboard_bridge_info">Q25와 같은 하드웨어 키보드 케이스를 위해 기본적으로 켜져 있습니다. 어떤 앱이든 이 신호를 보낼 수 있으므로, 사용하지 않는 경우에만 꺼 두세요.</string>
+    <string name="see_caller_spam_id">발신자 및 스팸 표시 보기</string>
+    <string name="see_caller_spam_id_desc">업체 및 스팸 번호 식별</string>
+    <string name="filter_spam">스팸 전화 필터링</string>
+    <string name="filter_spam_desc">스팸으로 의심되는 전화가 방해하지 않도록 방지합니다</string>
+    <string name="caller_id_spam_info">Zeno Classic Dialer는 전화를 걸거나 받을 때 유용한 정보를 표시하려고 시도합니다. 예를 들어 연락처에 없는 번호의 이름이나 스팸으로 의심되는 수신 전화에 대한 경고를 표시할 수 있습니다.</string>
+    <string name="default_home_country">기본 자국 국가</string>
+    <string name="auto_detected">자동 감지됨</string>
+    <string name="assisted_dialing_info">보조 다이얼링은 해외 여행 중 전화를 걸 때 국가 코드를 예측하여 추가합니다.</string>
+    <string name="send_responses_instantly">빠른 응답 즉시 보내기</string>
+    <string name="send_responses_instantly_desc">꺼져 있으면 텍스트가 미리 입력된 SMS 앱이 열립니다</string>
+    <string name="appearance">테마</string>
+    <string name="choose_theme">테마 선택</string>
+    <string name="controls">조작</string>
+    <string name="keep_portrait">통화 중 세로 모드 유지</string>
+    <string name="keep_portrait_desc">통화 중 실수로 자동 회전되는 것을 방지합니다</string>
+    <string name="flip_to_silence_desc">수신 전화를 무음으로 하려면 기기를 평평한 곳에 뒤집어 놓으세요</string>
+    <string name="announce_caller_id">발신자 표시 음성 안내</string>
+    <string name="never">사용 안 함</string>
+    <string name="always">항상</string>
+    <string name="headset_only">헤드셋 사용 시에만</string>
+    <string name="caller_id_announcement_info">수신 전화 시 발신자의 이름과 번호가 음성으로 안내됩니다.</string>
+    <string name="notifications">알림</string>
+    <string name="visual_voicemail">비주얼 음성사서함</string>
+    <string name="visual_voicemail_desc">통신사에서 비주얼 음성사서함을 지원하지 않을 수 있습니다</string>
+    <string name="advanced_settings">고급 설정</string>
+    <string name="contact_ringtones_desc">개별 연락처에 맞춤 벨소리를 추가하여 누가 전화하는지 쉽게 알 수 있습니다. 이 기기의 기본 벨소리를 관리하려면 설정으로 이동하세요.</string>
+    <string name="add_contact_ringtone">연락처 벨소리 추가</string>
+    <string name="your_calling_card">내 명함</string>
+    <string name="your_calling_card_desc">전화를 걸거나 받을 때 상대방에게 표시되는 방식입니다</string>
+    <string name="create">만들기</string>
+    <string name="contact_calling_card">연락처 명함</string>
+    <string name="contact_calling_card_desc">연락처가 전화할 때 표시되는 이름과 이미지입니다</string>
+    <string name="back">뒤로</string>
+    <string name="more">더보기</string>
+
+    <!-- Permissions / Prompts -->
+    <string name="phone_permission_required">전화 권한이 필요합니다</string>
+    <string name="telecom_failed">Telecom 실패(%1$s), ACTION_CALL로 재시도 중</string>
+    <string name="fallback_failed">대체 방법 실패: %1$s</string>
+    <string name="could_not_open_contact">연락처를 열 수 없습니다: %1$s</string>
+    <string name="enable_toolbar_buttons">툴바 버튼 활성화</string>
+    <string name="accessibility_prompt_msg">Zeno Classic Dialer가 키보드 툴바의 통화 및 종료 하드웨어 버튼을 사용할 수 있도록 허용하세요.\n\n목록에서 \"Zeno Classic Dialer\"를 찾아 활성화하세요.</string>
+    <string name="open_settings">설정 열기</string>
+    <string name="not_now">나중에</string>
+    <string name="set_as_default_hint">탭하여 기본 전화 앱으로 설정</string>
+    <string name="theme_original_classic">오리지널 클래식</string>
+    <string name="theme_modern_classic">모던 클래식</string>
+    <string name="theme_pixel">픽셀</string>
+    <string name="active_call_channel_desc">진행 중인 통화 및 빠른 제어를 표시합니다</string>
+    <string name="incoming_calls_channel_name">수신 전화</string>
+    <string name="incoming_calls_channel_desc">수신 전화에 대한 헤드업 알림</string>
+    <string name="failed_to_send_message">메시지 전송에 실패했습니다</string>
+</resources>

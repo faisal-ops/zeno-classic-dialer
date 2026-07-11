@@ -59,6 +59,8 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: DialerViewModel by viewModels()
     private lateinit var keyHandler: KeyHandler
+    private var registeredCallHandler: (() -> Unit)? = null
+    private var registeredEndHandler: (() -> Unit)? = null
     private val showAccessibilityPrompt = mutableStateOf(false)
     private val requestedTab = mutableStateOf<DialerTab?>(null)
     private val isDefaultDialer = mutableStateOf(false)
@@ -93,6 +95,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyPortraitModePreference()
 
         updateStatusBarForTheme()
 
@@ -194,16 +197,19 @@ class MainActivity : ComponentActivity() {
     // Clear callbacks when Activity goes to background so that
     // ButtonInterceptService falls back to openDefaultDialer() which
     // properly brings the Activity to the foreground via an Intent.
+    // Only clears if InCallActivity (or another instance) hasn't already taken over — see
+    // ToolbarButtonHandler.clearIfOwnedBy for why an unconditional null-out here can race
+    // with InCallActivity.onResume() when it's brought to front over this activity.
     override fun onStop() {
         super.onStop()
-        com.zeno.dialer.service.ToolbarButtonHandler.onCallPressed = null
-        com.zeno.dialer.service.ToolbarButtonHandler.onEndPressed = null
+        com.zeno.dialer.service.ToolbarButtonHandler.clearIfOwnedBy(registeredCallHandler, registeredEndHandler)
     }
 
     // Re-register toolbar button callbacks every time MainActivity comes to foreground.
     // This restores them after onStop cleared them.
     override fun onResume() {
         super.onResume()
+        applyPortraitModePreference()
         updateStatusBarForTheme()
         // Apply theme-appropriate default tab (Pixel→Home, Classic→Calls).
         // Only takes effect when the style changes or on first ever call.
@@ -211,6 +217,10 @@ class MainActivity : ComponentActivity() {
         val style = settingsPrefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)
         viewModel.applyDefaultTabForStyle(style)
         viewModel.onPermissionsReady()
+        // Restore toolbar Call/End callbacks cleared by onStop() — must happen before the
+        // debug early-return below, otherwise a debug build's toolbar buttons stop working
+        // after any background/foreground cycle.
+        registerToolbarButtons()
 
         // Debug preview mode: skip default-dialer and accessibility prompting.
         if (BuildConfig.DEBUG) return
@@ -238,26 +248,6 @@ class MainActivity : ComponentActivity() {
                 promptAccessibilityService()
             } else {
                 launchRolePickerIfNeeded()
-            }
-        }
-        com.zeno.dialer.service.ToolbarButtonHandler.onCallPressed = {
-            runOnUiThread {
-                Log.i("ZenoDialer", "Toolbar onCallPressed callback fired (onResume)")
-                dialOrOpenKeypad()
-            }
-        }
-        com.zeno.dialer.service.ToolbarButtonHandler.onEndPressed = {
-            runOnUiThread {
-                val callInfo = CallStateHolder.info.value
-                if (callInfo != null &&
-                    callInfo.state != android.telecom.Call.STATE_DISCONNECTED &&
-                    callInfo.state != android.telecom.Call.STATE_DISCONNECTING
-                ) {
-                    CallStateHolder.hangup()
-                } else {
-                    // No active call — close the app (same as physical BACK)
-                    finish()
-                }
             }
         }
     }
@@ -433,6 +423,17 @@ class MainActivity : ComponentActivity() {
         if (target.isBlank()) {
             return
         }
+
+        // Adding a second call: hold whatever's currently active first, regardless of which
+        // screen/button got the user here (the in-call "Dial Pad" and "Add a call" buttons
+        // both land on this same keypad — only "Add a call" pre-holds today). Without this,
+        // placing a second call on top of a still-active first call is left to carrier/OEM
+        // telecom-stack behavior instead of being handled consistently by the app.
+        val primary = CallStateHolder.info.value
+        if (primary != null && primary.state == Call.STATE_ACTIVE) {
+            CallStateHolder.hold()
+        }
+
         val uri = Uri.fromParts("tel", target, null)
         try {
             com.zeno.dialer.service.MyInCallService.armOutgoingCallActiveVibration()
@@ -441,7 +442,13 @@ class MainActivity : ComponentActivity() {
                 tryActionCallFallback(uri)
                 return
             }
-            telecom.placeCall(uri, android.os.Bundle.EMPTY)
+            val extras = android.os.Bundle()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val assistedDialingEnabled = getSharedPreferences(AppPreferences.FILE_SETTINGS, MODE_PRIVATE)
+                    .getBoolean(AppPreferences.KEY_ASSISTED_DIALING, false)
+                extras.putBoolean(TelecomManager.EXTRA_USE_ASSISTED_DIALING, assistedDialingEnabled)
+            }
+            telecom.placeCall(uri, extras)
         } catch (e: Exception) {
             Toast.makeText(
                 this,
@@ -550,13 +557,13 @@ class MainActivity : ComponentActivity() {
     // ── Toolbar button callbacks (via AccessibilityService) ────────────────
 
     private fun registerToolbarButtons() {
-        com.zeno.dialer.service.ToolbarButtonHandler.onCallPressed = {
+        val callHandler: () -> Unit = {
             runOnUiThread {
                 Log.i("ZenoDialer", "Toolbar onCallPressed callback fired (registerToolbarButtons)")
                 dialOrOpenKeypad()
             }
         }
-        com.zeno.dialer.service.ToolbarButtonHandler.onEndPressed = {
+        val endHandler: () -> Unit = {
             runOnUiThread {
                 val callInfo = CallStateHolder.info.value
                 if (
@@ -570,6 +577,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        registeredCallHandler = callHandler
+        registeredEndHandler = endHandler
+        com.zeno.dialer.service.ToolbarButtonHandler.onCallPressed = callHandler
+        com.zeno.dialer.service.ToolbarButtonHandler.onEndPressed = endHandler
 
         // Accessibility prompt is now shown before the default dialer role request
         // in onResume(), so it's not needed here.
@@ -653,8 +664,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        com.zeno.dialer.service.ToolbarButtonHandler.onCallPressed = null
-        com.zeno.dialer.service.ToolbarButtonHandler.onEndPressed = null
+        com.zeno.dialer.service.ToolbarButtonHandler.clearIfOwnedBy(registeredCallHandler, registeredEndHandler)
     }
 
     // ── Default dialer banner ────────────────────────────────────────────────

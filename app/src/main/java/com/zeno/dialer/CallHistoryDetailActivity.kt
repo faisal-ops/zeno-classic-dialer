@@ -1,5 +1,8 @@
 package com.zeno.dialer
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,18 +36,27 @@ import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.automirrored.filled.PhoneCallback
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
+import com.zeno.dialer.data.BlockedNumbersRepo
 import com.zeno.dialer.data.Contact
 import com.zeno.dialer.data.RecentsRepo
 import com.zeno.dialer.ui.Accent
@@ -68,6 +82,9 @@ import com.zeno.dialer.ui.ContactAvatar
 import com.zeno.dialer.ui.TextPrimary
 import com.zeno.dialer.ui.TextSecondary
 import com.zeno.dialer.ui.theme.DialerTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -76,6 +93,7 @@ import java.util.Locale
 class CallHistoryDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyPortraitModePreference()
 
         val number = intent.getStringExtra(EXTRA_NUMBER).orEmpty()
         val name = intent.getStringExtra(EXTRA_NAME).orEmpty().ifBlank { number }
@@ -97,13 +115,20 @@ class CallHistoryDetailActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Re-apply in case "Keep portrait mode" was changed in Settings while this screen
+        // was backgrounded.
+        applyPortraitModePreference()
+    }
+
     companion object {
         const val EXTRA_NUMBER = "extra_number"
         const val EXTRA_NAME = "extra_name"
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun CallHistoryDetailScreen(
     number: String,
@@ -114,9 +139,14 @@ private fun CallHistoryDetailScreen(
 ) {
     val context = LocalContext.current
     var allItems by remember { mutableStateOf<List<Contact>>(emptyList()) }
+    var showOverflowSheet by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    val overflowSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val blockedNumbersRepo = remember { BlockedNumbersRepo(context) }
+    var isBlocked by remember { mutableStateOf(blockedNumbersRepo.contains(number)) }
 
     LaunchedEffect(number) {
-        allItems = RecentsRepo(context).getHistoryForNumber(number)
+        allItems = withContext(Dispatchers.IO) { RecentsRepo(context).getHistoryForNumber(number) }
     }
 
     // Group entries by date label (toDateLabel is @Composable so must run in composable scope)
@@ -146,7 +176,7 @@ private fun CallHistoryDetailScreen(
 
             Spacer(Modifier.width(4.dp))
 
-            ContactAvatar(name = name, photoUri = null, size = 40)
+            ContactAvatar(name = name, photoUri = allItems.firstOrNull()?.photoUri, size = 40)
 
             Spacer(Modifier.width(12.dp))
 
@@ -160,7 +190,7 @@ private fun CallHistoryDetailScreen(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${stringResource(R.string.mobile)} • $number",
+                    text = number,
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -170,7 +200,7 @@ private fun CallHistoryDetailScreen(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .clickable { /* overflow menu placeholder */ },
+                    .clickable { showOverflowSheet = true },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more), tint = TextSecondary)
@@ -274,6 +304,83 @@ private fun CallHistoryDetailScreen(
             )
         }
     }
+
+    val overflowScope = rememberCoroutineScope()
+    fun dismissOverflowSheet() {
+        overflowScope.launch { overflowSheetState.hide() }.invokeOnCompletion { showOverflowSheet = false }
+    }
+
+    if (showOverflowSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showOverflowSheet = false },
+            sheetState = overflowSheetState,
+            containerColor = BgSurface
+        ) {
+            Column(modifier = Modifier.navigationBarsPadding()) {
+                OverflowSheetOption(
+                    icon = Icons.Default.ContentCopy,
+                    label = stringResource(R.string.copy_number)
+                ) {
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("phone", number))
+                    dismissOverflowSheet()
+                }
+                OverflowSheetOption(
+                    icon = Icons.Default.Block,
+                    label = if (isBlocked) stringResource(R.string.remove_from_blocked) else stringResource(R.string.add_to_blocked)
+                ) {
+                    if (isBlocked) blockedNumbersRepo.remove(number) else blockedNumbersRepo.add(number)
+                    isBlocked = !isBlocked
+                    dismissOverflowSheet()
+                }
+                OverflowSheetOption(
+                    icon = Icons.Default.Delete,
+                    label = stringResource(R.string.delete_from_log)
+                ) {
+                    showDeleteConfirm = true
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.delete_log_confirm_title)) },
+            text = { Text(stringResource(R.string.delete_log_confirm_msg, name)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    dismissOverflowSheet()
+                    RecentsRepo(context).deleteByNumber(number)
+                    onBack()
+                }) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+}
+
+@Composable
+private fun OverflowSheetOption(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(16.dp))
+        Text(label, color = TextPrimary, fontSize = 16.sp)
+    }
 }
 
 @Composable
@@ -329,12 +436,16 @@ private fun Long.toDateLabel(): String {
     val now = Calendar.getInstance()
     cal.timeInMillis = this
 
+    // Compute "yesterday" via calendar arithmetic (not day-of-year - 1) so it's correct
+    // across a year boundary, e.g. Dec 31 is still "yesterday" when today is Jan 1.
+    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+
     return when {
         cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
         cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR) -> stringResource(R.string.today)
 
-        cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
-        cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR) - 1 -> stringResource(R.string.yesterday)
+        cal.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) &&
+        cal.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR) -> stringResource(R.string.yesterday)
 
         else -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(this))
     }

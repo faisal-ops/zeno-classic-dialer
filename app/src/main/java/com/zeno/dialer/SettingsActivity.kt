@@ -32,10 +32,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
@@ -86,22 +86,27 @@ import com.zeno.dialer.ui.SurfaceActive
 import com.zeno.dialer.ui.TextHint
 import com.zeno.dialer.ui.TextPrimary
 import com.zeno.dialer.ui.TextSecondary
-import androidx.compose.ui.res.stringResource
 import com.zeno.dialer.ui.AccentGreen
-import com.zeno.dialer.ui.theme.DialerStyle
 import com.zeno.dialer.ui.theme.DialerTheme
-import com.zeno.dialer.ui.theme.LocalDialerStyle
 import com.zeno.dialer.AppPreferences
 import com.zeno.dialer.R
 
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyPortraitModePreference()
         setContent {
             DialerTheme {
                 SettingsRoot(onBack = { finish() })
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-apply in case the "Keep portrait mode" toggle (on this very screen) changed
+        // while resumed, or was changed elsewhere and this screen was backgrounded.
+        applyPortraitModePreference()
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -120,11 +125,12 @@ class SettingsActivity : ComponentActivity() {
 
 // ── Defaults ─────────────────────────────────────────────────────────────────
 
-private val DEFAULT_QUICK_RESPONSES = listOf(
-    "Can't talk now. What's up?",
-    "I'll call you right back.",
-    "I'll call you later.",
-    "Can't talk now. Call me later?"
+@Composable
+private fun defaultQuickResponses(): List<String> = listOf(
+    stringResource(R.string.quick_response_default_1),
+    stringResource(R.string.quick_response_default_2),
+    stringResource(R.string.quick_response_default_3),
+    stringResource(R.string.quick_response_default_4)
 )
 
 private val SettingsTileTitleSize = 16.sp
@@ -270,10 +276,17 @@ private fun SettingsScreen(onBack: () -> Unit, onNavigate: (SettingsPage) -> Uni
 
 // ── Calls ─────────────────────────────────────────────────────────────────────
 
+private enum class ClearHistoryScope { ALL, MISSED, RECEIVED, DIALED }
+
 @Composable
 private fun CallsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val prefs = rememberPrefs()
     var showClearDialog by remember { mutableStateOf(false) }
+    var clearScope by remember { mutableStateOf(ClearHistoryScope.ALL) }
+    var externalKeyboardBridge by remember {
+        mutableStateOf(prefs.getBoolean(AppPreferences.KEY_EXTERNAL_KEYBOARD_BRIDGE_ENABLED, true))
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(BgPage)) {
         SettingsTopBar(title = stringResource(R.string.calls), onBack = onBack)
@@ -285,22 +298,78 @@ private fun CallsScreen(onBack: () -> Unit) {
                     icon           = Icons.Default.Delete,
                     title          = stringResource(R.string.clear_history),
                     showDividerBelow = false,
-                    onClick        = { showClearDialog = true }
+                    onClick        = { clearScope = ClearHistoryScope.ALL; showClearDialog = true }
                 )
             }
+            item { Spacer(Modifier.height(12.dp)) }
+
+            item { SectionHeader(stringResource(R.string.external_keyboard_bridge)) }
+            item {
+                ToggleRow(
+                    title = stringResource(R.string.external_keyboard_bridge),
+                    subtitle = stringResource(R.string.external_keyboard_bridge_desc),
+                    checked = externalKeyboardBridge,
+                    onToggle = {
+                        externalKeyboardBridge = it
+                        prefs.edit().putBoolean(AppPreferences.KEY_EXTERNAL_KEYBOARD_BRIDGE_ENABLED, it).apply()
+                    }
+                )
+            }
+            item { Spacer(Modifier.height(8.dp)) }
+            item { InfoRow(stringResource(R.string.external_keyboard_bridge_info)) }
             item { Spacer(Modifier.height(12.dp)) }
         }
     }
 
     if (showClearDialog) {
+        val scopeOptions = listOf(
+            ClearHistoryScope.ALL      to stringResource(R.string.clear_history_scope_all),
+            ClearHistoryScope.MISSED   to stringResource(R.string.clear_history_scope_missed),
+            ClearHistoryScope.RECEIVED to stringResource(R.string.clear_history_scope_received),
+            ClearHistoryScope.DIALED   to stringResource(R.string.clear_history_scope_dialed)
+        )
+        val scopeLabel = scopeOptions.first { it.first == clearScope }.second
+
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
             title   = { Text(stringResource(R.string.clear_history_confirm_title)) },
-            text    = { Text(stringResource(R.string.clear_history_confirm_msg)) },
+            text    = {
+                Column {
+                    scopeOptions.forEach { (scope, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { clearScope = scope }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = clearScope == scope,
+                                onClick = { clearScope = scope },
+                                colors = RadioButtonDefaults.colors(selectedColor = AccentGreen, unselectedColor = TextSecondary)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(label, color = TextPrimary, fontSize = SettingsTileTitleSize)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.clear_history_confirm_msg_scoped, scopeLabel),
+                        color = TextSecondary,
+                        fontSize = SettingsTileSecondarySize
+                    )
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     try {
-                        context.contentResolver.delete(CallLog.Calls.CONTENT_URI, null, null)
+                        val selection = when (clearScope) {
+                            ClearHistoryScope.ALL      -> null
+                            ClearHistoryScope.MISSED   -> "${CallLog.Calls.TYPE} = ${CallLog.Calls.MISSED_TYPE}"
+                            ClearHistoryScope.RECEIVED -> "${CallLog.Calls.TYPE} = ${CallLog.Calls.INCOMING_TYPE}"
+                            ClearHistoryScope.DIALED   -> "${CallLog.Calls.TYPE} = ${CallLog.Calls.OUTGOING_TYPE}"
+                        }
+                        context.contentResolver.delete(CallLog.Calls.CONTENT_URI, selection, null)
                     } catch (_: Exception) { }
                     showClearDialog = false
                     onBack()
@@ -392,11 +461,12 @@ private fun QuickResponsesScreen(onBack: () -> Unit) {
     var instantSend by remember {
         mutableStateOf(prefs.getBoolean(AppPreferences.KEY_QUICK_RESPONSE_INSTANT_SEND, false))
     }
+    val defaults = defaultQuickResponses()
     val responses = remember {
         (0..3).map { i ->
             mutableStateOf(
-                prefs.getString("${AppPreferences.KEY_QUICK_RESPONSE_PREFIX}$i", DEFAULT_QUICK_RESPONSES[i])
-                    ?: DEFAULT_QUICK_RESPONSES[i]
+                prefs.getString("${AppPreferences.KEY_QUICK_RESPONSE_PREFIX}$i", defaults[i])
+                    ?: defaults[i]
             )
         }
     }
@@ -447,6 +517,7 @@ private fun QuickResponsesScreen(onBack: () -> Unit) {
 @Composable
 private fun DisplayOptionsScreen(onBack: () -> Unit) {
     val prefs = rememberPrefs()
+    val activity = LocalContext.current as? android.app.Activity
     var portraitMode by remember { mutableStateOf(prefs.getBoolean(AppPreferences.KEY_PORTRAIT_MODE, true)) }
     var themeChoice by remember { mutableIntStateOf(prefs.getInt(AppPreferences.KEY_DIALER_STYLE, AppPreferences.DIALER_STYLE_MODERN_CLASSIC)) }
     val themes = listOf(
@@ -480,7 +551,13 @@ private fun DisplayOptionsScreen(onBack: () -> Unit) {
             title = stringResource(R.string.keep_portrait),
             subtitle = stringResource(R.string.keep_portrait_desc),
             checked = portraitMode,
-            onToggle = { portraitMode = it; prefs.edit().putBoolean(AppPreferences.KEY_PORTRAIT_MODE, it).apply() }
+            onToggle = {
+                portraitMode = it
+                prefs.edit().putBoolean(AppPreferences.KEY_PORTRAIT_MODE, it).apply()
+                // Apply immediately — onResume alone wouldn't catch this since the user is
+                // already resumed and sitting on this very screen when they flip the toggle.
+                activity?.applyPortraitModePreference()
+            }
         )
 
     }
@@ -578,7 +655,7 @@ private fun VoicemailScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(stringResource(R.string.notifications), color = TextPrimary, fontSize = SettingsTileTitleSize, modifier = Modifier.weight(1f))
-            Icon(Icons.Default.ChevronRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
         }
 
         Spacer(Modifier.height(8.dp))
@@ -600,7 +677,7 @@ private fun VoicemailScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(stringResource(R.string.advanced_settings), color = TextPrimary, fontSize = SettingsTileTitleSize, modifier = Modifier.weight(1f))
-            Icon(Icons.Default.ChevronRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -815,7 +892,7 @@ private fun SettingsNavItem(
                 }
             }
             Icon(
-                Icons.Default.ChevronRight, null,
+                Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
                 tint = if (highlighted) Accent else TextSecondary.copy(alpha = 0.5f),
                 modifier = Modifier.size(18.dp)
             )
@@ -839,34 +916,21 @@ private data class SettingsListSpacing(
     val cardRowVertical: Dp
 )
 
-@Composable
-private fun rememberSettingsListSpacing(): SettingsListSpacing {
-    return when (LocalDialerStyle.current) {
-        DialerStyle.PIXEL -> SettingsListSpacing(
-            sectionHeaderTop = 12.dp,
-            sectionHeaderBottom = 3.dp,
-            navRowVertical = 8.dp,
-            focusBarHeight = 30.dp,
-            iconContainerSize = 32.dp,
-            toggleRowVertical = 8.dp,
-            pickerRowVertical = 8.dp,
-            compactFocusBarHeight = 30.dp,
-            cardRowVertical = 12.dp
-        )
-        DialerStyle.ORIGINAL_CLASSIC,
-        DialerStyle.MODERN_CLASSIC -> SettingsListSpacing(
-            sectionHeaderTop = 12.dp,
-            sectionHeaderBottom = 3.dp,
-            navRowVertical = 8.dp,
-            focusBarHeight = 30.dp,
-            iconContainerSize = 32.dp,
-            toggleRowVertical = 8.dp,
-            pickerRowVertical = 8.dp,
-            compactFocusBarHeight = 30.dp,
-            cardRowVertical = 12.dp
-        )
-    }
-}
+// Spacing is currently identical across all dialer styles (Pixel/Original Classic/Modern
+// Classic) — kept as a single function so a future per-theme value only needs to change here.
+private val settingsListSpacing = SettingsListSpacing(
+    sectionHeaderTop = 12.dp,
+    sectionHeaderBottom = 3.dp,
+    navRowVertical = 8.dp,
+    focusBarHeight = 30.dp,
+    iconContainerSize = 32.dp,
+    toggleRowVertical = 8.dp,
+    pickerRowVertical = 8.dp,
+    compactFocusBarHeight = 30.dp,
+    cardRowVertical = 12.dp
+)
+
+private fun rememberSettingsListSpacing(): SettingsListSpacing = settingsListSpacing
 
 @Composable
 private fun ToggleRow(

@@ -13,6 +13,9 @@
 
     <!-- Main UI -->
     <string name="search_contacts">Contacten zoeken</string>
+    <string name="dialpad_key_star">ster</string>
+    <string name="dialpad_key_pound">hekje</string>
+    <string name="dialpad_key_description">Kiestoets %1$s</string>
     <string name="no_contacts">Geen contacten</string>
     <string name="no_history">Geen geschiedenis</string>
     <string name="no_results">Geen resultaten</string>
@@ -20,10 +23,8 @@
     <string name="clear">Wissen</string>
     <string name="cancel">Annuleren</string>
     <string name="delete">Verwijderen</string>
-    <string name="ok">OK</string>
     <string name="pasted">Geplakt</string>
     <string name="nothing_to_paste">Niets om te plakken</string>
-    <string name="copied">Gekopieerd</string>
     <string name="menu">Menu</string>
     <string name="voice_search">Spraakgestuurd zoeken</string>
     <string name="voice_search_prompt">Contacten zoeken…</string>
@@ -72,9 +73,6 @@
     <string name="enter_number">Nummer invoeren</string>
     <string name="add_contact">Contact toevoegen</string>
     <string name="backspace">Backspace</string>
-    <string name="dialpad_paste">Plakken</string>
-    <string name="dialpad_paste_hint">Vanaf klembord</string>
-    <string name="dialpad_copy_hint">Nummer in veld</string>
     <string name="dialpad_number_bar_a11y">Nummerinvoer; lang indrukken voor plakken of kopiëren</string>
 
     <!-- In-Call -->
@@ -112,6 +110,10 @@
     <string name="quick_reply_templates">Sjablonen voor snelle reacties</string>
     <string name="write_your_own">Zelf schrijven…</string>
     <string name="send_message_to">Bericht sturen naar</string>
+    <string name="quick_response_default_1">Kan nu niet praten. Wat is er?</string>
+    <string name="quick_response_default_2">Ik bel je zo terug.</string>
+    <string name="quick_response_default_3">Ik bel je later.</string>
+    <string name="quick_response_default_4">Kan nu niet praten. Bel je me later?</string>
 
     <!-- Settings -->
     <string name="settings">Instellingen</string>
@@ -136,7 +138,14 @@
     <string name="version_label">Versie %1$s</string>
     <string name="clear_history">Oproeplijst wissen</string>
     <string name="clear_history_confirm_title">Oproeplijst wissen?</string>
-    <string name="clear_history_confirm_msg">Alle oproeplijstvermeldingen worden permanent verwijderd.</string>
+    <string name="clear_history_confirm_msg_scoped">%1$s worden permanent verwijderd.</string>
+    <string name="clear_history_scope_all">Alle oproepen</string>
+    <string name="clear_history_scope_missed">Gemiste oproepen</string>
+    <string name="clear_history_scope_received">Ontvangen oproepen</string>
+    <string name="clear_history_scope_dialed">Gebelde nummers</string>
+    <string name="external_keyboard_bridge">Belknop van extern toetsenbord</string>
+    <string name="external_keyboard_bridge_desc">Sta een gekoppelde hardware-toetsenbordhoes-app toe om oproepen te beantwoorden, te beëindigen of te plaatsen</string>
+    <string name="external_keyboard_bridge_info">Standaard ingeschakeld voor hardware-toetsenbordhoezen zoals de Q25. Elke app kan dit signaal sturen — schakel dit alleen uit als je er geen gebruikt.</string>
     <string name="see_caller_spam_id">Beller- en spam-ID bekijken</string>
     <string name="see_caller_spam_id_desc">Bedrijfs- en spamnummers identificeren</string>
     <string name="filter_spam">Spamoproepen filteren</string>
@@ -171,8 +180,6 @@
     <string name="contact_calling_card_desc">Hoe je de naam en afbeelding van je contactpersoon ziet wanneer ze bellen</string>
     <string name="back">Terug</string>
     <string name="more">Meer</string>
-    <string name="mobile">Mobiel</string>
-    <string name="work">Werk</string>
 
     <!-- Permissions / Prompts -->
     <string name="phone_permission_required">Telefoonmachtiging vereist</string>

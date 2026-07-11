@@ -13,6 +13,9 @@
 
     <!-- Main UI -->
     <string name="search_contacts">Поиск контактов</string>
+    <string name="dialpad_key_star">звёздочка</string>
+    <string name="dialpad_key_pound">решётка</string>
+    <string name="dialpad_key_description">Клавиша панели набора %1$s</string>
     <string name="no_contacts">Нет контактов</string>
     <string name="no_history">Нет истории</string>
     <string name="no_results">Нет результатов</string>
@@ -20,10 +23,8 @@
     <string name="clear">Очистить</string>
     <string name="cancel">Отмена</string>
     <string name="delete">Удалить</string>
-    <string name="ok">ОК</string>
     <string name="pasted">Вставлено</string>
     <string name="nothing_to_paste">Нечего вставлять</string>
-    <string name="copied">Скопировано</string>
     <string name="menu">Меню</string>
     <string name="voice_search">Голосовой поиск</string>
     <string name="voice_search_prompt">Поиск контактов…</string>
@@ -72,9 +73,6 @@
     <string name="enter_number">Введите номер</string>
     <string name="add_contact">Добавить контакт</string>
     <string name="backspace">Backspace</string>
-    <string name="dialpad_paste">Вставить</string>
-    <string name="dialpad_paste_hint">Из буфера обмена</string>
-    <string name="dialpad_copy_hint">Номер в поле</string>
     <string name="dialpad_number_bar_a11y">Ввод номера; долгое нажатие для вставки или копирования</string>
 
     <!-- In-Call -->
@@ -112,6 +110,10 @@
     <string name="quick_reply_templates">Шаблоны быстрого ответа</string>
     <string name="write_your_own">Написать своё…</string>
     <string name="send_message_to">Отправить сообщение</string>
+    <string name="quick_response_default_1">Не могу говорить сейчас. Что случилось?</string>
+    <string name="quick_response_default_2">Я перезвоню тебе прямо сейчас.</string>
+    <string name="quick_response_default_3">Я позвоню тебе позже.</string>
+    <string name="quick_response_default_4">Не могу говорить сейчас. Перезвонишь позже?</string>
 
     <!-- Settings -->
     <string name="settings">Настройки</string>
@@ -136,7 +138,14 @@
     <string name="version_label">Версия %1$s</string>
     <string name="clear_history">Очистить историю звонков</string>
     <string name="clear_history_confirm_title">Очистить историю звонков?</string>
-    <string name="clear_history_confirm_msg">Все записи журнала звонков будут удалены без возможности восстановления.</string>
+    <string name="clear_history_confirm_msg_scoped">%1$s будут удалены без возможности восстановления.</string>
+    <string name="clear_history_scope_all">Все звонки</string>
+    <string name="clear_history_scope_missed">Пропущенные звонки</string>
+    <string name="clear_history_scope_received">Принятые звонки</string>
+    <string name="clear_history_scope_dialed">Исходящие звонки</string>
+    <string name="external_keyboard_bridge">Кнопка вызова внешней клавиатуры</string>
+    <string name="external_keyboard_bridge_desc">Разрешить сопряжённому приложению чехла-клавиатуры отвечать на звонки, завершать их или совершать вызовы</string>
+    <string name="external_keyboard_bridge_info">Включено по умолчанию для чехлов-клавиатур вроде Q25. Любое приложение может отправить этот сигнал — отключайте, только если не используете такой чехол.</string>
     <string name="see_caller_spam_id">Показывать ID и спам звонящего</string>
     <string name="see_caller_spam_id_desc">Определять бизнес-номера и спам</string>
     <string name="filter_spam">Фильтровать спам-звонки</string>
@@ -171,8 +180,6 @@
     <string name="contact_calling_card_desc">Как вы видите имя и фото контакта при входящем звонке</string>
     <string name="back">Назад</string>
     <string name="more">Ещё</string>
-    <string name="mobile">Мобильный</string>
-    <string name="work">Работа</string>
 
     <!-- Permissions / Prompts -->
     <string name="phone_permission_required">Требуется разрешение на телефон</string>

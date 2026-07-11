@@ -8,11 +8,22 @@ import com.zeno.dialer.CallStateHolder
 import com.zeno.dialer.MainActivity
 
 /**
- * Optional bridge receiver for external apps (e.g. keyboard IME) to forward
- * call/end hardware-key intents to Zeno without requiring a direct API.
+ * Bridge receiver for the Q25 hardware-keyboard case's companion app, which forwards
+ * physical Call/End key presses as broadcasts rather than standard [android.view.KeyEvent]s
+ * (unlike [ButtonInterceptService], which intercepts standard KEYCODE_CALL/KEYCODE_ENDCALL
+ * events on devices that deliver them normally).
+ *
+ * This receiver is exported (any app can broadcast [ACTION_CALL_KEY]/[ACTION_END_KEY]), so it's
+ * gated behind [AppPreferences.KEY_EXTERNAL_KEYBOARD_BRIDGE_ENABLED] — otherwise an unrelated
+ * app could silently answer, hang up, or trigger a dial by sending the same broadcast. Defaults
+ * to enabled since this hardware is this app's primary target device; users on hardware without
+ * this bridge can turn it off in Settings.
  */
 class ExternalCallKeyReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val prefs = context.getSharedPreferences(AppPreferences.FILE_SETTINGS, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(AppPreferences.KEY_EXTERNAL_KEYBOARD_BRIDGE_ENABLED, true)) return
+
         when (intent.action) {
             ACTION_CALL_KEY -> {
                 val callHandler = ToolbarButtonHandler.onCallPressed
@@ -35,14 +46,8 @@ class ExternalCallKeyReceiver : BroadcastReceiver() {
                 val endHandler = ToolbarButtonHandler.onEndPressed
                 if (endHandler != null) {
                     endHandler.invoke()
-                } else {
-                    val prefs = context.getSharedPreferences(
-                        AppPreferences.FILE_SETTINGS,
-                        Context.MODE_PRIVATE
-                    )
-                    if (prefs.getBoolean(AppPreferences.KEY_END_CALL_ANYWHERE, false)) {
-                        CallStateHolder.hangup()
-                    }
+                } else if (prefs.getBoolean(AppPreferences.KEY_END_CALL_ANYWHERE, false)) {
+                    CallStateHolder.hangup()
                 }
             }
         }

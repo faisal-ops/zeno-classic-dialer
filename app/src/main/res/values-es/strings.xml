@@ -13,6 +13,9 @@
 
     <!-- Main UI -->
     <string name="search_contacts">Buscar contactos</string>
+    <string name="dialpad_key_star">asterisco</string>
+    <string name="dialpad_key_pound">almohadilla</string>
+    <string name="dialpad_key_description">Tecla del teclado %1$s</string>
     <string name="no_contacts">Sin contactos</string>
     <string name="no_history">Sin historial</string>
     <string name="no_results">Sin resultados</string>
@@ -20,10 +23,8 @@
     <string name="clear">Borrar</string>
     <string name="cancel">Cancelar</string>
     <string name="delete">Eliminar</string>
-    <string name="ok">Aceptar</string>
     <string name="pasted">Pegado</string>
     <string name="nothing_to_paste">Nada para pegar</string>
-    <string name="copied">Copiado</string>
     <string name="menu">Menú</string>
     <string name="voice_search">Búsqueda por voz</string>
     <string name="voice_search_prompt">Buscar contactos…</string>
@@ -72,9 +73,6 @@
     <string name="enter_number">Ingresar número</string>
     <string name="add_contact">Agregar contacto</string>
     <string name="backspace">Borrar</string>
-    <string name="dialpad_paste">Pegar</string>
-    <string name="dialpad_paste_hint">Desde portapapeles</string>
-    <string name="dialpad_copy_hint">Número en campo</string>
     <string name="dialpad_number_bar_a11y">Entrada de número; mantén presionado para pegar o copiar</string>
 
     <!-- In-Call -->
@@ -112,6 +110,10 @@
     <string name="quick_reply_templates">Plantillas de respuesta rápida</string>
     <string name="write_your_own">Escribir el tuyo…</string>
     <string name="send_message_to">Enviar mensaje a</string>
+    <string name="quick_response_default_1">No puedo hablar ahora. ¿Qué pasa?</string>
+    <string name="quick_response_default_2">Te devuelvo la llamada enseguida.</string>
+    <string name="quick_response_default_3">Te llamaré más tarde.</string>
+    <string name="quick_response_default_4">No puedo hablar ahora. ¿Me llamas más tarde?</string>
 
     <!-- Settings -->
     <string name="settings">Configuración</string>
@@ -136,7 +138,14 @@
     <string name="version_label">Versión %1$s</string>
     <string name="clear_history">Borrar historial de llamadas</string>
     <string name="clear_history_confirm_title">¿Borrar historial de llamadas?</string>
-    <string name="clear_history_confirm_msg">Todas las entradas del registro de llamadas se eliminarán permanentemente.</string>
+    <string name="clear_history_confirm_msg_scoped">%1$s se eliminarán permanentemente.</string>
+    <string name="clear_history_scope_all">Todas las llamadas</string>
+    <string name="clear_history_scope_missed">Llamadas perdidas</string>
+    <string name="clear_history_scope_received">Llamadas recibidas</string>
+    <string name="clear_history_scope_dialed">Llamadas realizadas</string>
+    <string name="external_keyboard_bridge">Botón de llamada del teclado externo</string>
+    <string name="external_keyboard_bridge_desc">Permite que una funda de teclado físico emparejada conteste, finalice o realice llamadas</string>
+    <string name="external_keyboard_bridge_info">Activado de forma predeterminada para fundas con teclado físico como la Q25. Cualquier app puede enviar esta señal — desactívalo solo si no usas una.</string>
     <string name="see_caller_spam_id">Ver ID de llamante y spam</string>
     <string name="see_caller_spam_id_desc">Identifica números de negocios y spam</string>
     <string name="filter_spam">Filtrar llamadas de spam</string>
@@ -171,8 +180,6 @@
     <string name="contact_calling_card_desc">Cómo ves el nombre e imagen de tu contacto cuando llama</string>
     <string name="back">Atrás</string>
     <string name="more">Más</string>
-    <string name="mobile">Móvil</string>
-    <string name="work">Trabajo</string>
 
     <!-- Permissions / Prompts -->
     <string name="phone_permission_required">Se requiere permiso de teléfono</string>

@@ -13,6 +13,9 @@
 
     <!-- Main UI -->
     <string name="search_contacts">البحث في جهات الاتصال</string>
+    <string name="dialpad_key_star">نجمة</string>
+    <string name="dialpad_key_pound">علامة الرقم</string>
+    <string name="dialpad_key_description">مفتاح لوحة الاتصال %1$s</string>
     <string name="no_contacts">لا توجد جهات اتصال</string>
     <string name="no_history">لا يوجد سجل</string>
     <string name="no_results">لا توجد نتائج</string>
@@ -20,10 +23,8 @@
     <string name="clear">مسح</string>
     <string name="cancel">إلغاء</string>
     <string name="delete">حذف</string>
-    <string name="ok">موافق</string>
     <string name="pasted">تم اللصق</string>
     <string name="nothing_to_paste">لا يوجد ما يُلصق</string>
-    <string name="copied">تم النسخ</string>
     <string name="menu">القائمة</string>
     <string name="voice_search">البحث الصوتي</string>
     <string name="voice_search_prompt">البحث في جهات الاتصال…</string>
@@ -72,9 +73,6 @@
     <string name="enter_number">أدخل الرقم</string>
     <string name="add_contact">إضافة جهة اتصال</string>
     <string name="backspace">حذف</string>
-    <string name="dialpad_paste">لصق</string>
-    <string name="dialpad_paste_hint">من الحافظة</string>
-    <string name="dialpad_copy_hint">الرقم في الحقل</string>
     <string name="dialpad_number_bar_a11y">إدخال الرقم؛ اضغط مطولاً للصق أو النسخ</string>
 
     <!-- In-Call -->
@@ -112,6 +110,10 @@
     <string name="quick_reply_templates">قوالب الرد السريع</string>
     <string name="write_your_own">اكتب ردك…</string>
     <string name="send_message_to">إرسال رسالة إلى</string>
+    <string name="quick_response_default_1">لا أستطيع التحدث الآن. ما الأمر؟</string>
+    <string name="quick_response_default_2">سأعاود الاتصال بك فورًا.</string>
+    <string name="quick_response_default_3">سأتصل بك لاحقًا.</string>
+    <string name="quick_response_default_4">لا أستطيع التحدث الآن. هل يمكنك الاتصال بي لاحقًا؟</string>
 
     <!-- Settings -->
     <string name="settings">الإعدادات</string>
@@ -136,7 +138,14 @@
     <string name="version_label">الإصدار %1$s</string>
     <string name="clear_history">مسح سجل المكالمات</string>
     <string name="clear_history_confirm_title">مسح سجل المكالمات؟</string>
-    <string name="clear_history_confirm_msg">سيُحذف سجل جميع المكالمات نهائياً.</string>
+    <string name="clear_history_confirm_msg_scoped">سيتم حذف %1$s نهائياً.</string>
+    <string name="clear_history_scope_all">جميع المكالمات</string>
+    <string name="clear_history_scope_missed">المكالمات الفائتة</string>
+    <string name="clear_history_scope_received">المكالمات الواردة</string>
+    <string name="clear_history_scope_dialed">المكالمات الصادرة</string>
+    <string name="external_keyboard_bridge">زر الاتصال بلوحة المفاتيح الخارجية</string>
+    <string name="external_keyboard_bridge_desc">السماح لتطبيق حافظة لوحة المفاتيح الخارجية المقترن بالرد على المكالمات أو إنهائها أو إجرائها</string>
+    <string name="external_keyboard_bridge_info">مفعّل افتراضيًا لحافظات لوحة المفاتيح الخارجية مثل Q25. يمكن لأي تطبيق إرسال هذه الإشارة — عطّله فقط إذا كنت لا تستخدم واحدة.</string>
     <string name="see_caller_spam_id">عرض هوية المتصل والبريد العشوائي</string>
     <string name="see_caller_spam_id_desc">التعرف على أرقام الأعمال والبريد العشوائي</string>
     <string name="filter_spam">تصفية مكالمات البريد العشوائي</string>
@@ -171,8 +180,6 @@
     <string name="contact_calling_card_desc">كيف ترى اسم وصورة جهة الاتصال عند اتصالها</string>
     <string name="back">رجوع</string>
     <string name="more">المزيد</string>
-    <string name="mobile">جوال</string>
-    <string name="work">عمل</string>
 
     <!-- Permissions / Prompts -->
     <string name="phone_permission_required">يلزم إذن الهاتف</string>
