@@ -33,8 +33,12 @@
     <string name="filter_all">전체</string>
     <string name="filter_missed">부재중</string>
     <string name="filter_received">수신</string>
+    <string name="filter_voicemail">음성 사서함</string>
     <string name="filter_contacts">연락처</string>
     <string name="filter_recents">최근 기록</string>
+    <string name="no_voicemails">음성 메시지가 없습니다</string>
+    <string name="voicemail_downloading">다운로드 중…</string>
+    <string name="voicemail_carrier_unsupported">이 기기에서는 이동통신사가 비주얼 음성 사서함을 지원하지 않습니다. 대신 이동통신사의 음성 사서함 설정을 확인하세요.</string>
     <string name="today">오늘</string>
     <string name="yesterday">어제</string>
     <string name="just_now">방금 전</string>

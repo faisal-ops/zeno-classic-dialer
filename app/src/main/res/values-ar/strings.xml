@@ -33,8 +33,12 @@
     <string name="filter_all">الكل</string>
     <string name="filter_missed">الفائتة</string>
     <string name="filter_received">المُستلمة</string>
+    <string name="filter_voicemail">البريد الصوتي</string>
     <string name="filter_contacts">جهات الاتصال</string>
     <string name="filter_recents">الأخيرة</string>
+    <string name="no_voicemails">لا توجد رسائل صوتية</string>
+    <string name="voicemail_downloading">جارٍ التنزيل…</string>
+    <string name="voicemail_carrier_unsupported">لا يدعم مشغّل شبكتك البريد الصوتي المرئي على هذا الجهاز. يُرجى مراجعة إعدادات البريد الصوتي الخاصة بمشغّل شبكتك بدلاً من ذلك.</string>
     <string name="today">اليوم</string>
     <string name="yesterday">أمس</string>
     <string name="just_now">الآن</string>

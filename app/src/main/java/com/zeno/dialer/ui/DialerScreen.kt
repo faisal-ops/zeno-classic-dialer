@@ -769,34 +769,49 @@ private fun CallsContent(state: DialerUiState, viewModel: DialerViewModel) {
 
         AllMissedTabs(
             current = state.filterMode,
+            hasUnreadVoicemails = state.hasUnreadVoicemails,
             onSelect = { mode -> viewModel.setFilter(mode) },
             modifier = Modifier.fillMaxWidth()
         )
 
-        ResultsList(
-            results       = state.results,
-            selectedIndex = state.selectedIndex,
-            modifier      = Modifier.weight(1f).fillMaxWidth(),
-            onTap         = { i ->
-                viewModel.selectItem(i)
-                viewModel.toggleExpandIndex(i) // single tap expands history panel
-            },
-            // Calls screen UX:
-            // - single tap selects/expands inline history (no dialing)
-            // - double tap dials the selected number
-            onDoubleTap   = { i -> viewModel.selectItem(i); viewModel.callItem(i) },
-            onCallNumber  = { number -> viewModel.callNumber(number) },
-            onEditNumber  = { number ->
-                viewModel.setQueryDirect(number)
-                viewModel.setCurrentTab(tabToIndex(DialerTab.KEYPAD))
-            },
-            onAddFavorite = { contact -> viewModel.pinFavorite(contact) },
-            onToggleBlocked = { contact -> viewModel.toggleBlockedContact(contact) },
-            isBlocked = { contact -> contact.number.filter { it.isDigit() } in state.blockedNumbers },
-            onDelete      = { number -> viewModel.deleteCallLogForNumber(number) },
-            toggleExpandFlow = viewModel.toggleExpandEvent,
-            onScrollFocusIndexChanged = { i -> viewModel.setScrollFocusedIndex(i) },
-        )
+        if (state.filterMode == FilterMode.VOICEMAIL) {
+            VoicemailList(
+                voicemails = state.voicemails,
+                expandedId = state.expandedVoicemailId,
+                playback = state.voicemailPlayback,
+                carrierSupported = state.carrierSupportsVoicemail,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                onTap = { vm -> viewModel.toggleVoicemailExpanded(vm.id) },
+                onPlayPause = { vm -> viewModel.playPauseVoicemail(vm) },
+                onDelete = { vm -> viewModel.deleteVoicemail(vm) },
+                onCallBack = { vm -> viewModel.callNumber(vm.number) },
+            )
+        } else {
+            ResultsList(
+                results       = state.results,
+                selectedIndex = state.selectedIndex,
+                modifier      = Modifier.weight(1f).fillMaxWidth(),
+                onTap         = { i ->
+                    viewModel.selectItem(i)
+                    viewModel.toggleExpandIndex(i) // single tap expands history panel
+                },
+                // Calls screen UX:
+                // - single tap selects/expands inline history (no dialing)
+                // - double tap dials the selected number
+                onDoubleTap   = { i -> viewModel.selectItem(i); viewModel.callItem(i) },
+                onCallNumber  = { number -> viewModel.callNumber(number) },
+                onEditNumber  = { number ->
+                    viewModel.setQueryDirect(number)
+                    viewModel.setCurrentTab(tabToIndex(DialerTab.KEYPAD))
+                },
+                onAddFavorite = { contact -> viewModel.pinFavorite(contact) },
+                onToggleBlocked = { contact -> viewModel.toggleBlockedContact(contact) },
+                isBlocked = { contact -> contact.number.filter { it.isDigit() } in state.blockedNumbers },
+                onDelete      = { number -> viewModel.deleteCallLogForNumber(number) },
+                toggleExpandFlow = viewModel.toggleExpandEvent,
+                onScrollFocusIndexChanged = { i -> viewModel.setScrollFocusedIndex(i) },
+            )
+        }
     }
 }
 
@@ -978,15 +993,18 @@ private fun AllMissedTabs(
     current: FilterMode,
     onSelect: (FilterMode) -> Unit,
     modifier: Modifier = Modifier,
+    hasUnreadVoicemails: Boolean = false,
 ) {
     val tabs = listOf(
         FilterMode.ALL to stringResource(R.string.filter_all),
         FilterMode.MISSED to stringResource(R.string.filter_missed),
         FilterMode.RECEIVED to stringResource(R.string.filter_received),
+        FilterMode.VOICEMAIL to stringResource(R.string.filter_voicemail),
     )
     val selected = when (current) {
         FilterMode.MISSED -> FilterMode.MISSED
         FilterMode.RECEIVED -> FilterMode.RECEIVED
+        FilterMode.VOICEMAIL -> FilterMode.VOICEMAIL
         FilterMode.ALL, FilterMode.RECENTS -> FilterMode.ALL
         FilterMode.CONTACTS -> FilterMode.ALL
     }
@@ -1020,12 +1038,18 @@ private fun AllMissedTabs(
                                 if (isSel) Accent.copy(alpha = 0.18f) else Color.Transparent
                             )
                     )
-                    Text(
-                        text       = label,
-                        color      = if (isSel) Accent else TextHint,
-                        fontSize   = 13.sp,
-                        fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Medium
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text       = label,
+                            color      = if (isSel) Accent else TextHint,
+                            fontSize   = 13.sp,
+                            fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Medium
+                        )
+                        if (mode == FilterMode.VOICEMAIL && hasUnreadVoicemails) {
+                            Spacer(Modifier.width(4.dp))
+                            Box(Modifier.size(6.dp).background(Accent, CircleShape))
+                        }
+                    }
                 }
             } else {
                 Box(
@@ -1042,6 +1066,15 @@ private fun AllMissedTabs(
                         fontSize   = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
+                    if (mode == FilterMode.VOICEMAIL && hasUnreadVoicemails) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 6.dp, end = 10.dp)
+                                .size(6.dp)
+                                .background(Accent, CircleShape)
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -2129,13 +2162,18 @@ private fun SearchBar(
 private data class ChipDef(val mode: FilterMode, val labelRes: Int)
 
 @Composable
-private fun FilterChipRow(current: FilterMode, onSelect: (FilterMode) -> Unit) {
+private fun FilterChipRow(
+    current: FilterMode,
+    onSelect: (FilterMode) -> Unit,
+    hasUnreadVoicemails: Boolean = false,
+) {
     val filterChips = listOf(
-        ChipDef(FilterMode.ALL,      R.string.filter_all),
-        ChipDef(FilterMode.MISSED,   R.string.filter_missed),
-        ChipDef(FilterMode.RECEIVED, R.string.filter_received),
-        ChipDef(FilterMode.CONTACTS, R.string.filter_contacts),
-        ChipDef(FilterMode.RECENTS,  R.string.filter_recents),
+        ChipDef(FilterMode.ALL,       R.string.filter_all),
+        ChipDef(FilterMode.MISSED,    R.string.filter_missed),
+        ChipDef(FilterMode.RECEIVED,  R.string.filter_received),
+        ChipDef(FilterMode.VOICEMAIL, R.string.filter_voicemail),
+        ChipDef(FilterMode.CONTACTS,  R.string.filter_contacts),
+        ChipDef(FilterMode.RECENTS,   R.string.filter_recents),
     )
     LazyRow(
         contentPadding        = PaddingValues(horizontal = 16.dp),
@@ -2157,12 +2195,18 @@ private fun FilterChipRow(current: FilterMode, onSelect: (FilterMode) -> Unit) {
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text  = stringResource(chip.labelRes),
-                    color = textColor,
-                    style = if (sel) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
-                            else MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text  = stringResource(chip.labelRes),
+                        color = textColor,
+                        style = if (sel) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                                else MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal)
+                    )
+                    if (chip.mode == FilterMode.VOICEMAIL && hasUnreadVoicemails) {
+                        Spacer(Modifier.width(4.dp))
+                        Box(Modifier.size(6.dp).background(Accent, CircleShape))
+                    }
+                }
             }
         }
     }
@@ -2333,30 +2377,48 @@ private fun PixelHomeContent(
 
         Spacer(Modifier.height(12.dp))
 
-        FilterChipRow(current = state.filterMode, onSelect = { viewModel.setFilter(it) })
+        FilterChipRow(
+            current = state.filterMode,
+            hasUnreadVoicemails = state.hasUnreadVoicemails,
+            onSelect = { viewModel.setFilter(it) }
+        )
 
         Spacer(Modifier.height(4.dp))
 
-        ResultsList(
-            results          = state.results,
-            selectedIndex    = state.selectedIndex,
-            modifier         = Modifier.weight(1f).fillMaxWidth(),
-            onTap            = { i ->
-                viewModel.selectItem(i)
-                // Pixel: single tap expands the action panel (Call / Message / History)
-                viewModel.toggleExpandIndex(i)
-            },
-            onDoubleTap      = { i -> viewModel.selectItem(i); viewModel.callItem(i) },
-            onCallNumber     = { number -> viewModel.callNumber(number) },
-            onEditNumber     = onEditNumber,
-            onAddFavorite    = { contact -> viewModel.pinFavorite(contact) },
-            onToggleBlocked  = { contact -> viewModel.toggleBlockedContact(contact) },
-            isBlocked        = { contact -> contact.number.filter { it.isDigit() } in state.blockedNumbers },
-            onDelete         = { number -> viewModel.deleteCallLogForNumber(number) },
-            toggleExpandFlow = viewModel.toggleExpandEvent,
-            onScrollFocusIndexChanged = { i -> viewModel.setScrollFocusedIndex(i) },
-            scrollToTopKey   = state.query + state.filterMode.name,
-        )
+        if (state.filterMode == FilterMode.VOICEMAIL) {
+            VoicemailList(
+                voicemails = state.voicemails,
+                expandedId = state.expandedVoicemailId,
+                playback = state.voicemailPlayback,
+                carrierSupported = state.carrierSupportsVoicemail,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                onTap = { vm -> viewModel.toggleVoicemailExpanded(vm.id) },
+                onPlayPause = { vm -> viewModel.playPauseVoicemail(vm) },
+                onDelete = { vm -> viewModel.deleteVoicemail(vm) },
+                onCallBack = { vm -> viewModel.callNumber(vm.number) },
+            )
+        } else {
+            ResultsList(
+                results          = state.results,
+                selectedIndex    = state.selectedIndex,
+                modifier         = Modifier.weight(1f).fillMaxWidth(),
+                onTap            = { i ->
+                    viewModel.selectItem(i)
+                    // Pixel: single tap expands the action panel (Call / Message / History)
+                    viewModel.toggleExpandIndex(i)
+                },
+                onDoubleTap      = { i -> viewModel.selectItem(i); viewModel.callItem(i) },
+                onCallNumber     = { number -> viewModel.callNumber(number) },
+                onEditNumber     = onEditNumber,
+                onAddFavorite    = { contact -> viewModel.pinFavorite(contact) },
+                onToggleBlocked  = { contact -> viewModel.toggleBlockedContact(contact) },
+                isBlocked        = { contact -> contact.number.filter { it.isDigit() } in state.blockedNumbers },
+                onDelete         = { number -> viewModel.deleteCallLogForNumber(number) },
+                toggleExpandFlow = viewModel.toggleExpandEvent,
+                onScrollFocusIndexChanged = { i -> viewModel.setScrollFocusedIndex(i) },
+                scrollToTopKey   = state.query + state.filterMode.name,
+            )
+        }
     }
 }
 

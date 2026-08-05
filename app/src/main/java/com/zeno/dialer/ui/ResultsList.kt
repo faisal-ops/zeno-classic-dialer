@@ -1242,7 +1242,7 @@ private fun ExpandedPanel(
 }
 
 @Composable
-private fun ExpandedActionButton(
+internal fun ExpandedActionButton(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
@@ -1272,7 +1272,7 @@ private fun ExpandedActionButton(
 }
 
 @Composable
-private fun formatRelativeTime(timestamp: Long): String {
+internal fun formatRelativeTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
     val minutes = diff / 60_000

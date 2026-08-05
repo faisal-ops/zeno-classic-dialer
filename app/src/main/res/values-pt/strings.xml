@@ -33,8 +33,12 @@
     <string name="filter_all">Todos</string>
     <string name="filter_missed">Perdidas</string>
     <string name="filter_received">Recebidas</string>
+    <string name="filter_voicemail">Correio de voz</string>
     <string name="filter_contacts">Contatos</string>
     <string name="filter_recents">Recentes</string>
+    <string name="no_voicemails">Nenhuma mensagem de voz</string>
+    <string name="voicemail_downloading">Baixando…</string>
+    <string name="voicemail_carrier_unsupported">Sua operadora não é compatível com o correio de voz visual neste aparelho. Verifique as configurações de correio de voz da sua operadora.</string>
     <string name="today">Hoje</string>
     <string name="yesterday">Ontem</string>
     <string name="just_now">Agora mesmo</string>

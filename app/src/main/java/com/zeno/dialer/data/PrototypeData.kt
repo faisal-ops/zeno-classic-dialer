@@ -50,5 +50,29 @@ internal object PrototypeData {
         lastCallTime = ts,
         callType = callType
     )
+
+    val voicemails: List<Voicemail> by lazy {
+        val now = System.currentTimeMillis()
+        listOf(
+            voicemail(contacts[0], now - 20 * 60_000L, 42L, isRead = false),
+            voicemail(contacts[3], now - 3 * 3_600_000L, 18L, isRead = false),
+            voicemail(contacts[6], now - 26 * 3_600_000L, 65L, isRead = true),
+        )
+    }
+
+    private fun voicemail(base: Contact, ts: Long, durationSeconds: Long, isRead: Boolean): Voicemail {
+        val id = base.number.hashCode().toLong()
+        return Voicemail(
+            id = id,
+            number = base.number,
+            name = base.name,
+            photoUri = base.photoUri,
+            date = ts,
+            durationSeconds = durationSeconds,
+            isRead = isRead,
+            hasContent = true,
+            contentUri = android.net.Uri.parse("content://com.android.voicemail/voicemail/$id"),
+        )
+    }
 }
 

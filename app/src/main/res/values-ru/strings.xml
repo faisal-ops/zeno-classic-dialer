@@ -33,8 +33,12 @@
     <string name="filter_all">Все</string>
     <string name="filter_missed">Пропущенные</string>
     <string name="filter_received">Принятые</string>
+    <string name="filter_voicemail">Голосовая почта</string>
     <string name="filter_contacts">Контакты</string>
     <string name="filter_recents">Недавние</string>
+    <string name="no_voicemails">Нет голосовых сообщений</string>
+    <string name="voicemail_downloading">Загрузка…</string>
+    <string name="voicemail_carrier_unsupported">Ваш оператор не поддерживает визуальную голосовую почту на этом устройстве. Проверьте настройки голосовой почты у оператора.</string>
     <string name="today">Сегодня</string>
     <string name="yesterday">Вчера</string>
     <string name="just_now">Только что</string>

@@ -33,8 +33,12 @@
     <string name="filter_all">Alle</string>
     <string name="filter_missed">Verpasst</string>
     <string name="filter_received">Empfangen</string>
+    <string name="filter_voicemail">Mailbox</string>
     <string name="filter_contacts">Kontakte</string>
     <string name="filter_recents">Zuletzt</string>
+    <string name="no_voicemails">Keine Mailbox-Nachrichten</string>
+    <string name="voicemail_downloading">Wird heruntergeladen …</string>
+    <string name="voicemail_carrier_unsupported">Dein Mobilfunkanbieter unterstützt auf diesem Gerät keine visuelle Mailbox. Nutze stattdessen die Mailbox-Einstellungen deines Anbieters.</string>
     <string name="today">Heute</string>
     <string name="yesterday">Gestern</string>
     <string name="just_now">Gerade eben</string>

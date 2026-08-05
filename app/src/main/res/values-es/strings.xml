@@ -33,8 +33,12 @@
     <string name="filter_all">Todo</string>
     <string name="filter_missed">Perdidas</string>
     <string name="filter_received">Recibidas</string>
+    <string name="filter_voicemail">Buzón de voz</string>
     <string name="filter_contacts">Contactos</string>
     <string name="filter_recents">Recientes</string>
+    <string name="no_voicemails">No hay mensajes de voz</string>
+    <string name="voicemail_downloading">Descargando…</string>
+    <string name="voicemail_carrier_unsupported">Tu operador no admite el buzón de voz visual en este dispositivo. Consulta la configuración de buzón de voz de tu operador.</string>
     <string name="today">Hoy</string>
     <string name="yesterday">Ayer</string>
     <string name="just_now">Ahora mismo</string>

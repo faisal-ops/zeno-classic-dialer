@@ -33,8 +33,12 @@
     <string name="filter_all">Tutti</string>
     <string name="filter_missed">Perse</string>
     <string name="filter_received">Ricevute</string>
+    <string name="filter_voicemail">Segreteria</string>
     <string name="filter_contacts">Contatti</string>
     <string name="filter_recents">Recenti</string>
+    <string name="no_voicemails">Nessun messaggio in segreteria</string>
+    <string name="voicemail_downloading">Download in corso…</string>
+    <string name="voicemail_carrier_unsupported">Il tuo operatore non supporta la segreteria visiva su questo dispositivo. Controlla invece le impostazioni della segreteria del tuo operatore.</string>
     <string name="today">Oggi</string>
     <string name="yesterday">Ieri</string>
     <string name="just_now">Proprio ora</string>

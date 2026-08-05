@@ -33,8 +33,12 @@
     <string name="filter_all">Alle</string>
     <string name="filter_missed">Gemist</string>
     <string name="filter_received">Ontvangen</string>
+    <string name="filter_voicemail">Voicemail</string>
     <string name="filter_contacts">Contacten</string>
     <string name="filter_recents">Recent</string>
+    <string name="no_voicemails">Geen voicemailberichten</string>
+    <string name="voicemail_downloading">Downloaden…</string>
+    <string name="voicemail_carrier_unsupported">Je provider ondersteunt geen visuele voicemail op dit toestel. Raadpleeg in plaats daarvan de voicemailinstellingen van je provider.</string>
     <string name="today">Vandaag</string>
     <string name="yesterday">Gisteren</string>
     <string name="just_now">Zojuist</string>

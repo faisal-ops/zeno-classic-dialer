@@ -21,14 +21,15 @@ Native Android dialer focused on **square, keyboard-first phones**—especially 
 [![Downloads](https://img.shields.io/github/downloads/faisal-ops/zeno-classic-dialer/total?style=flat-square&label=downloads)](https://github.com/faisal-ops/zeno-classic-dialer/releases)
 [![Latest release](https://img.shields.io/github/v/release/faisal-ops/zeno-classic-dialer?sort=semver&style=flat-square&label=release)](https://github.com/faisal-ops/zeno-classic-dialer/releases/latest)
 
-**Install:** open **[Latest release](https://github.com/faisal-ops/zeno-classic-dialer/releases/latest)** and download the attached APK (e.g. `zeno-classic-dialer-v3.1.0.apk` for **v3.1.0**).  
+**Install:** open **[Latest release](https://github.com/faisal-ops/zeno-classic-dialer/releases/latest)** and download the attached APK (e.g. `zeno-classic-dialer-v3.2.0.apk` for **v3.2.0**).  
 All releases: [github.com/faisal-ops/zeno-classic-dialer/releases](https://github.com/faisal-ops/zeno-classic-dialer/releases).
 
 ---
 
 ## Features
 
-- **Three main tabs** — **Calls** (favorites + call log with All / Missed / Received), **Contacts**, **Dial Pad**
+- **Three main tabs** — **Calls** (favorites + call log with All / Missed / Received / Voicemail), **Contacts**, **Dial Pad**
+- **Visual voicemail** — Reads voicemails from the platform's own voicemail provider (no carrier VVM protocol implemented); availability depends on carrier support
 - **Adaptive dialpad** — Layout tuned for square screens; long-press the number field for **paste / copy**
 - **Haptic feedback** — Light vibration on key presses where supported
 - **Inline call details** — Expand call log rows for quick actions
@@ -46,7 +47,7 @@ All releases: [github.com/faisal-ops/zeno-classic-dialer/releases](https://githu
 | **Language** | Kotlin |
 | **UI** | Jetpack Compose + Material 3 |
 | **`applicationId`** | `com.zeno.zenoclassicdialer` (release). Debug builds use the `.debug` suffix. |
-| **Version** | **3.1.0** (`versionCode` **20**); debug APK shows `3.1.0-debug` via `versionNameSuffix` |
+| **Version** | **3.2.0** (`versionCode` **21**); debug APK shows `3.2.0-debug` via `versionNameSuffix` |
 | **Min SDK** | **29** (Android 10) — default dialer / Telecom stack |
 | **Target SDK** | 34 |
 | **Theme** | Three selectable styles: **Original Classic**, **Modern Classic**, **Pixel** |
@@ -92,10 +93,10 @@ APK: `app/build/outputs/apk/debug/app-debug.apk` (installs as `com.zeno.zenoclas
 ./gradlew assembleRelease
 ```
 
-APK: `app/build/outputs/apk/release/zeno-classic-dialer-v3.1.0.apk`
+APK: `app/build/outputs/apk/release/zeno-classic-dialer-v3.2.0.apk`
 
 ```bash
-adb install -r app/build/outputs/apk/release/zeno-classic-dialer-v3.1.0.apk
+adb install -r app/build/outputs/apk/release/zeno-classic-dialer-v3.2.0.apk
 ```
 
 ## Tested devices

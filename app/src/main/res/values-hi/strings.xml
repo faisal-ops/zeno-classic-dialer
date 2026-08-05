@@ -33,8 +33,12 @@
     <string name="filter_all">सभी</string>
     <string name="filter_missed">छूटे हुए</string>
     <string name="filter_received">प्राप्त</string>
+    <string name="filter_voicemail">वॉइसमेल</string>
     <string name="filter_contacts">संपर्क</string>
     <string name="filter_recents">हालिया</string>
+    <string name="no_voicemails">कोई वॉइसमेल नहीं</string>
+    <string name="voicemail_downloading">डाउनलोड हो रहा है…</string>
+    <string name="voicemail_carrier_unsupported">आपका मोबाइल ऑपरेटर इस डिवाइस पर विज़ुअल वॉइसमेल का समर्थन नहीं करता। इसके बजाय अपने ऑपरेटर की वॉइसमेल सेटिंग देखें।</string>
     <string name="today">आज</string>
     <string name="yesterday">कल</string>
     <string name="just_now">अभी</string>

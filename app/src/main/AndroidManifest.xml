@@ -9,6 +9,9 @@
 
     <!-- Core dialer permissions -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <!-- Visual voicemail: reads the platform VoicemailContract provider (auto-granted to the
+         default dialer role holder; read-only, no VVM protocol client implemented here). -->
+    <uses-permission android:name="android.permission.READ_VOICEMAIL" />
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_CALL_LOG" />

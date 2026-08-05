@@ -13,6 +13,10 @@ class SearchEngine(
         if (mode == FilterMode.CONTACTS) {
             return contactsRepo.search(query)
         }
+        if (mode == FilterMode.VOICEMAIL) {
+            // Voicemail entries live in DialerUiState.voicemails, not results — see DialerViewModel.
+            return emptyList()
+        }
         val recents = when (mode) {
             FilterMode.MISSED    -> recentsRepo.search(query, missedOnly = true, limit = 100)
             FilterMode.RECEIVED  -> recentsRepo.search(query, incomingOnly = true, limit = 100)
@@ -33,6 +37,9 @@ class SearchEngine(
     suspend fun searchAsync(query: String, mode: FilterMode): List<Contact> = coroutineScope {
         if (mode == FilterMode.CONTACTS) {
             return@coroutineScope contactsRepo.search(query)
+        }
+        if (mode == FilterMode.VOICEMAIL) {
+            return@coroutineScope emptyList()
         }
 
         val recentsDeferred = async(Dispatchers.IO) {
@@ -63,6 +70,7 @@ class SearchEngine(
     fun keypadContactMatch(query: String, mode: FilterMode, results: List<Contact>): Contact? {
         if (query.isBlank()) return null
         if (mode == FilterMode.CONTACTS) return results.firstOrNull()
+        if (mode == FilterMode.VOICEMAIL) return null
         return contactsRepo.search(query).firstOrNull()
     }
 

@@ -20,4 +20,4 @@ data class Contact(
     val isCallLogRead: Boolean = true
 )
 
-enum class FilterMode { ALL, MISSED, RECEIVED, CONTACTS, RECENTS }
+enum class FilterMode { ALL, MISSED, RECEIVED, VOICEMAIL, CONTACTS, RECENTS }

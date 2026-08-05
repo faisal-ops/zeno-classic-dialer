@@ -33,8 +33,12 @@
     <string name="filter_all">Tous</string>
     <string name="filter_missed">Manqués</string>
     <string name="filter_received">Reçus</string>
+    <string name="filter_voicemail">Messagerie vocale</string>
     <string name="filter_contacts">Contacts</string>
     <string name="filter_recents">Récents</string>
+    <string name="no_voicemails">Aucun message vocal</string>
+    <string name="voicemail_downloading">Téléchargement…</string>
+    <string name="voicemail_carrier_unsupported">Votre opérateur ne prend pas en charge la messagerie vocale visuelle sur cet appareil. Consultez plutôt les paramètres de messagerie vocale de votre opérateur.</string>
     <string name="today">Aujourd\'hui</string>
     <string name="yesterday">Hier</string>
     <string name="just_now">À l\'instant</string>

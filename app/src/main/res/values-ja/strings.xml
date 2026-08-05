@@ -33,8 +33,12 @@
     <string name="filter_all">すべて</string>
     <string name="filter_missed">不在着信</string>
     <string name="filter_received">受信</string>
+    <string name="filter_voicemail">留守番電話</string>
     <string name="filter_contacts">連絡先</string>
     <string name="filter_recents">最近</string>
+    <string name="no_voicemails">留守番電話はありません</string>
+    <string name="voicemail_downloading">ダウンロード中…</string>
+    <string name="voicemail_carrier_unsupported">この端末では、ご利用の通信事業者がビジュアルボイスメールに対応していません。代わりに通信事業者の留守番電話設定をご確認ください。</string>
     <string name="today">今日</string>
     <string name="yesterday">昨日</string>
     <string name="just_now">たった今</string>

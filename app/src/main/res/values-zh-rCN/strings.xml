@@ -33,8 +33,12 @@
     <string name="filter_all">全部</string>
     <string name="filter_missed">未接</string>
     <string name="filter_received">已接</string>
+    <string name="filter_voicemail">语音信箱</string>
     <string name="filter_contacts">联系人</string>
     <string name="filter_recents">最近</string>
+    <string name="no_voicemails">没有语音留言</string>
+    <string name="voicemail_downloading">正在下载…</string>
+    <string name="voicemail_carrier_unsupported">您的运营商在此设备上不支持可视语音信箱。请改为查看运营商的语音信箱设置。</string>
     <string name="today">今天</string>
     <string name="yesterday">昨天</string>
     <string name="just_now">刚刚</string>

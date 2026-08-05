@@ -33,8 +33,12 @@
     <string name="filter_all">All</string>
     <string name="filter_missed">Missed</string>
     <string name="filter_received">Received</string>
+    <string name="filter_voicemail">Voicemail</string>
     <string name="filter_contacts">Contacts</string>
     <string name="filter_recents">Recents</string>
+    <string name="no_voicemails">No voicemails</string>
+    <string name="voicemail_downloading">Downloading…</string>
+    <string name="voicemail_carrier_unsupported">Your carrier doesn\'t support visual voicemail on this device. Check your carrier\'s voicemail settings instead.</string>
     <string name="today">Today</string>
     <string name="yesterday">Yesterday</string>
     <string name="just_now">Just now</string>

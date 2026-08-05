@@ -20,6 +20,10 @@ import com.zeno.dialer.data.FilterMode
 import com.zeno.dialer.data.RecentsDiskCache
 import com.zeno.dialer.data.RecentsRepo
 import com.zeno.dialer.data.SearchEngine
+import com.zeno.dialer.data.Voicemail
+import com.zeno.dialer.data.VoicemailPlayer
+import com.zeno.dialer.data.VoicemailRepo
+import com.zeno.dialer.ui.VoicemailPlaybackState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -63,6 +67,13 @@ data class DialerUiState(
     val favoriteFocusIndex: Int = -1,
     /** Drives the Calls nav-icon badge. Tab/filter-independent — see RecentsRepo.hasUnreadMissedCalls. */
     val hasUnreadMissedCalls: Boolean = false,
+    val voicemails: List<Voicemail> = emptyList(),
+    /** Drives the unread dot on the Voicemail filter chip — see VoicemailRepo.hasUnread. */
+    val hasUnreadVoicemails: Boolean = false,
+    val expandedVoicemailId: Long? = null,
+    val voicemailPlayback: VoicemailPlaybackState = VoicemailPlaybackState(),
+    /** Carrier-config check, independent of the READ_VOICEMAIL/role gate — see VoicemailRepo.carrierSupportsVisualVoicemail. */
+    val carrierSupportsVoicemail: Boolean = true,
 ) {
     val displayQuery: String
         get() = if (query.isEmpty()) ""
@@ -77,6 +88,8 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     private val favoritesRepo = FavoritesRepo(application)
     private val blockedNumbersRepo = BlockedNumbersRepo(application)
     private val searchEngine = SearchEngine(contactsRepo, recentsRepo)
+    private val voicemailRepo = VoicemailRepo(application, contactsRepo)
+    private val voicemailPlayer = VoicemailPlayer(application)
 
     private val _uiState = MutableStateFlow(DialerUiState())
 
@@ -93,6 +106,13 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
             contactsRepo.invalidate()
             recentsRepo.clearLookupCache()
             forceRefresh()
+        }
+    }
+
+    private val voicemailObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            refreshVoicemails()
+            refreshVoicemailBadge()
         }
     }
     val uiState: StateFlow<DialerUiState> = _uiState.asStateFlow()
@@ -125,6 +145,7 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     private var callLogObserverRegistered = false
     private var contactsObserverRegistered = false
+    private var voicemailObserverRegistered = false
 
     /** Tracks the last style we applied a default tab for, to detect theme changes. -1 = never applied. */
     private var lastDefaultTabStyle: Int = -1
@@ -147,6 +168,12 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     init {
+        // Carrier-config check — not permission-gated, safe to run immediately.
+        viewModelScope.launch(Dispatchers.IO) {
+            val supported = voicemailRepo.carrierSupportsVisualVoicemail()
+            _uiState.update { it.copy(carrierSupportsVoicemail = supported) }
+        }
+
         // ── Instant startup: show disk-cached recents on the very first frame ──
         val diskCached = RecentsDiskCache.load(getApplication())
         if (diskCached.isNotEmpty()) {
@@ -198,6 +225,11 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         if (hasContactsPermission()) {
             registerContactsObserver()
         }
+        if (hasVoicemailPermission()) {
+            registerVoicemailObserver()
+            refreshVoicemails()
+            refreshVoicemailBadge()
+        }
         refreshBlockedNumbers()
     }
 
@@ -208,9 +240,30 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun refreshVoicemails() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val list = voicemailRepo.list()
+            _uiState.update { it.copy(voicemails = list) }
+        }
+    }
+
+    private fun refreshVoicemailBadge() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val hasUnread = voicemailRepo.hasUnread()
+            _uiState.update { it.copy(hasUnreadVoicemails = hasUnread) }
+        }
+    }
+
     fun onPermissionsReady() {
         registerCallLogObserver()
         registerContactsObserver()
+        // Voicemail access is role-granted (READ_VOICEMAIL), which can finish completing
+        // slightly after this runtime-permission callback fires — re-check here too.
+        if (hasVoicemailPermission()) {
+            registerVoicemailObserver()
+            refreshVoicemails()
+            refreshVoicemailBadge()
+        }
         viewModelScope.launch(Dispatchers.IO) {
             try { contactsRepo.search("") } catch (_: SecurityException) { }
             blockedNumbersRepo.syncFromSystem()
@@ -245,6 +298,16 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         } catch (_: SecurityException) { }
     }
 
+    private fun registerVoicemailObserver() {
+        if (voicemailObserverRegistered) return
+        try {
+            getApplication<Application>().contentResolver.registerContentObserver(
+                android.provider.VoicemailContract.Voicemails.CONTENT_URI, true, voicemailObserver
+            )
+            voicemailObserverRegistered = true
+        } catch (_: SecurityException) { }
+    }
+
     private fun hasCallLogPermission(): Boolean =
         ContextCompat.checkSelfPermission(
             getApplication(),
@@ -255,6 +318,12 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         ContextCompat.checkSelfPermission(
             getApplication(),
             android.Manifest.permission.READ_CONTACTS
+        ) == PackageManager.PERMISSION_GRANTED
+
+    private fun hasVoicemailPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            getApplication(),
+            android.Manifest.permission.READ_VOICEMAIL
         ) == PackageManager.PERMISSION_GRANTED
 
     // ── Query editing ────────────────────────────────────────────────────────
@@ -458,11 +527,12 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun cycleFilter() {
         val next = when (_uiState.value.filterMode) {
-            FilterMode.ALL      -> FilterMode.MISSED
-            FilterMode.MISSED   -> FilterMode.RECEIVED
-            FilterMode.RECEIVED -> FilterMode.RECENTS
-            FilterMode.RECENTS  -> FilterMode.ALL
-            FilterMode.CONTACTS -> FilterMode.ALL
+            FilterMode.ALL       -> FilterMode.MISSED
+            FilterMode.MISSED    -> FilterMode.RECEIVED
+            FilterMode.RECEIVED  -> FilterMode.VOICEMAIL
+            FilterMode.VOICEMAIL -> FilterMode.RECENTS
+            FilterMode.RECENTS   -> FilterMode.ALL
+            FilterMode.CONTACTS  -> FilterMode.ALL
         }
         _uiState.update { it.copy(filterMode = next, selectedIndex = -1, scrollFocusedIndex = -1) }
     }
@@ -538,6 +608,64 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         super.onCleared()
         getApplication<Application>().contentResolver.unregisterContentObserver(callLogObserver)
         getApplication<Application>().contentResolver.unregisterContentObserver(contactsObserver)
+        getApplication<Application>().contentResolver.unregisterContentObserver(voicemailObserver)
+        voicemailPlayer.release()
+    }
+
+    // ── Voicemail ────────────────────────────────────────────────────────────
+
+    /** Expands/collapses a voicemail row; marks it read (and stops any playback) on collapse. */
+    fun toggleVoicemailExpanded(id: Long) {
+        val current = _uiState.value
+        if (current.expandedVoicemailId == id) {
+            voicemailPlayer.stop()
+            _uiState.update { it.copy(expandedVoicemailId = null, voicemailPlayback = VoicemailPlaybackState()) }
+            return
+        }
+        voicemailPlayer.stop()
+        _uiState.update { it.copy(expandedVoicemailId = id, voicemailPlayback = VoicemailPlaybackState()) }
+        val wasUnread = current.voicemails.firstOrNull { it.id == id }?.isRead == false
+        if (wasUnread) {
+            viewModelScope.launch(Dispatchers.IO) {
+                voicemailRepo.markRead(id)
+                refreshVoicemailBadge()
+                refreshVoicemails()
+            }
+        }
+    }
+
+    fun playPauseVoicemail(voicemail: Voicemail) {
+        if (!voicemail.hasContent) return
+        if (voicemailPlayer.isPlaying()) {
+            voicemailPlayer.pause()
+            _uiState.update { it.copy(voicemailPlayback = it.voicemailPlayback.copy(isPlaying = false)) }
+            return
+        }
+        voicemailPlayer.play(
+            scope = viewModelScope,
+            uri = voicemail.contentUri,
+            onProgress = { positionMs, durationMs ->
+                _uiState.update {
+                    it.copy(voicemailPlayback = VoicemailPlaybackState(true, positionMs, durationMs))
+                }
+            },
+            onComplete = {
+                _uiState.update { it.copy(voicemailPlayback = VoicemailPlaybackState()) }
+            }
+        )
+        _uiState.update { it.copy(voicemailPlayback = it.voicemailPlayback.copy(isPlaying = true)) }
+    }
+
+    fun deleteVoicemail(voicemail: Voicemail) {
+        if (_uiState.value.expandedVoicemailId == voicemail.id) {
+            voicemailPlayer.stop()
+            _uiState.update { it.copy(expandedVoicemailId = null, voicemailPlayback = VoicemailPlaybackState()) }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            voicemailRepo.delete(voicemail.id)
+            refreshVoicemails()
+            refreshVoicemailBadge()
+        }
     }
 
     // ── Call history ─────────────────────────────────────────────────────────
