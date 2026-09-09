@@ -181,7 +181,7 @@ class InCallActivity : ComponentActivity() {
                 // It should navigate back (Back key ≠ End call).
             }
             // IVR DTMF: dedicated keys + BB QWERTY mapping (same as dialer keypad).
-            if (state == Call.STATE_ACTIVE) {
+            if (state == Call.STATE_ACTIVE && !PhoneKeyMapping.isRepurposedCallHardwareKey(event.keyCode)) {
                 val ch = PhoneKeyMapping.keyCodeToDtmfChar(event.keyCode)
                     ?: event.unicodeChar.takeIf { it > 0 }?.toChar()
                         ?.takeIf { it.isDigit() || it == '*' || it == '#' }
@@ -197,7 +197,7 @@ class InCallActivity : ComponentActivity() {
         } else if (event.action == KeyEvent.ACTION_UP) {
             // Best-effort: stop a possibly "stuck" DTMF tone as soon as the key is released.
             val state = CallStateHolder.info.value?.state
-            if (state == Call.STATE_ACTIVE) {
+            if (state == Call.STATE_ACTIVE && !PhoneKeyMapping.isRepurposedCallHardwareKey(event.keyCode)) {
                 val maybeCh = PhoneKeyMapping.keyCodeToDtmfChar(event.keyCode)
                     ?: event.unicodeChar.takeIf { it > 0 }?.toChar()
                         ?.takeIf { it.isDigit() || it == '*' || it == '#' }

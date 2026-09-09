@@ -9,6 +9,10 @@ object ToolbarButtonHandler {
     var onCallPressed: (() -> Unit)? = null
     var onEndPressed: (() -> Unit)? = null
 
+    /** Hardware side-mute-key / currency-speaker-key — only registered while InCallScreen is composed. */
+    var onMutePressed: (() -> Unit)? = null
+    var onSpeakerPressed: (() -> Unit)? = null
+
     /**
      * Clears the callbacks only if they still reference [callHandler]/[endHandler] — i.e. only
      * if nobody else has already taken over the registration.
@@ -23,5 +27,11 @@ object ToolbarButtonHandler {
     fun clearIfOwnedBy(callHandler: (() -> Unit)?, endHandler: (() -> Unit)?) {
         if (onCallPressed === callHandler) onCallPressed = null
         if (onEndPressed === endHandler) onEndPressed = null
+    }
+
+    /** Same reference-identity guard as [clearIfOwnedBy], for the mute/speaker pair. */
+    fun clearAudioIfOwnedBy(muteHandler: (() -> Unit)?, speakerHandler: (() -> Unit)?) {
+        if (onMutePressed === muteHandler) onMutePressed = null
+        if (onSpeakerPressed === speakerHandler) onSpeakerPressed = null
     }
 }

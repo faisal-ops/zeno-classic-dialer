@@ -46,6 +46,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -313,6 +314,26 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
     var micMuted  by remember { mutableStateOf(svc?.isMuted()     ?: false) }
     var speakerOn by remember { mutableStateOf(svc?.isSpeakerOn() ?: false) }
 
+    val toggleMute: () -> Unit = {
+        micMuted = !micMuted
+        com.zeno.dialer.service.MyInCallService.instance?.applyMute(micMuted)
+    }
+    val toggleSpeaker: () -> Unit = {
+        speakerOn = !speakerOn
+        com.zeno.dialer.service.MyInCallService.instance?.applySpeaker(speakerOn)
+    }
+
+    // Hardware side-mute-key / currency-speaker-key support (see ButtonInterceptService).
+    // Registering the same toggle lambdas the on-screen buttons use keeps the UI's micMuted/
+    // speakerOn state in sync regardless of whether the toggle came from hardware or touch.
+    DisposableEffect(Unit) {
+        com.zeno.dialer.service.ToolbarButtonHandler.onMutePressed = toggleMute
+        com.zeno.dialer.service.ToolbarButtonHandler.onSpeakerPressed = toggleSpeaker
+        onDispose {
+            com.zeno.dialer.service.ToolbarButtonHandler.clearAudioIfOwnedBy(toggleMute, toggleSpeaker)
+        }
+    }
+
     if (IsPixel) {
         PixelInCallContent(
             displayName  = displayName,
@@ -323,14 +344,8 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
             secondCall   = secondCall,
             micMuted     = micMuted,
             speakerOn    = speakerOn,
-            onToggleMute = {
-                micMuted = !micMuted
-                com.zeno.dialer.service.MyInCallService.instance?.applyMute(micMuted)
-            },
-            onToggleSpeaker = {
-                speakerOn = !speakerOn
-                com.zeno.dialer.service.MyInCallService.instance?.applySpeaker(speakerOn)
-            },
+            onToggleMute = toggleMute,
+            onToggleSpeaker = toggleSpeaker,
             onQuickReply = onQuickReply,
             context      = context,
         )
@@ -407,14 +422,8 @@ internal fun InCallScreen(vm: InCallViewModel, onQuickReply: (String) -> Unit) {
                 speakerOn = speakerOn,
                 controlRowHeight = controlRowHeight,
                 expandRows = true,
-                onToggleMute = {
-                    micMuted = !micMuted
-                    com.zeno.dialer.service.MyInCallService.instance?.applyMute(micMuted)
-                },
-                onToggleSpeaker = {
-                    speakerOn = !speakerOn
-                    com.zeno.dialer.service.MyInCallService.instance?.applySpeaker(speakerOn)
-                },
+                onToggleMute = toggleMute,
+                onToggleSpeaker = toggleSpeaker,
                 onKeypad = {
                     // NEW_TASK required for REORDER_TO_FRONT to find MainActivity's separate
                     // taskAffinity task rather than stacking a duplicate on this task.

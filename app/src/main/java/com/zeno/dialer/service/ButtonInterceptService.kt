@@ -38,6 +38,27 @@ class ButtonInterceptService : AccessibilityService() {
                 // Headset buttons (wired/BT) send this key for play/pause/answer — consuming
                 // it here would trigger an outgoing call whenever the user presses a headset
                 // button while the dialer is in the foreground.
+                KeyEvent.KEYCODE_VOLUME_MUTE -> {
+                    // Q25's side mute key — confirmed via logcat (KEY down code=164) that this
+                    // device's keylayout maps it to KEYCODE_VOLUME_MUTE (call-output-volume mute,
+                    // handled by MediaSessionService), not KEYCODE_MUTE (mic mute) as the SDK name
+                    // would suggest for a "mute button". Repurposed for call-mute only while a
+                    // call is active, so it behaves as an ordinary volume-mute key otherwise.
+                    if (com.zeno.dialer.CallStateHolder.info.value?.state == android.telecom.Call.STATE_ACTIVE) {
+                        ToolbarButtonHandler.onMutePressed?.invoke()
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_GRAVE -> {
+                    // Q25's "currency/speaker" key is a regular keyboard-matrix key that happens
+                    // to send the standard GRAVE code — only hijack it for speaker-toggle while a
+                    // call is active, so it still types a backtick everywhere else (this service
+                    // intercepts system-wide, not just within our own app).
+                    if (com.zeno.dialer.CallStateHolder.info.value?.state == android.telecom.Call.STATE_ACTIVE) {
+                        ToolbarButtonHandler.onSpeakerPressed?.invoke()
+                        return true
+                    }
+                }
                 KeyEvent.KEYCODE_ENDCALL -> {
                     val callback = ToolbarButtonHandler.onEndPressed
                     if (callback != null) {

@@ -3,6 +3,7 @@ package com.zeno.dialer
 import android.view.KeyEvent
 import android.util.Log
 import android.os.SystemClock
+import android.telecom.Call
 import com.zeno.dialer.data.Contact
 
 class KeyHandler(
@@ -72,7 +73,21 @@ class KeyHandler(
         return true
     }
 
-    fun handle(keyCode: Int, unicodeChar: Int, altUnicodeChar: Int = 0): Boolean = when (keyCode) {
+    fun handle(keyCode: Int, unicodeChar: Int, altUnicodeChar: Int = 0): Boolean {
+        // GRAVE/VOLUME_MUTE are repurposed as hardware speaker/mute toggles during a call
+        // (ButtonInterceptService) — if MainActivity ever ends up with focus while a call is
+        // still active in the background (e.g. re-opened via the physical Call key), this general
+        // typing handler must not treat them as text/DTMF input, even though this device's keymap
+        // happens to resolve a phone-keypad-equivalent character for them (GRAVE -> '4').
+        if (PhoneKeyMapping.isRepurposedCallHardwareKey(keyCode) &&
+            CallStateHolder.info.value?.state == Call.STATE_ACTIVE
+        ) {
+            return false
+        }
+        return handleInternal(keyCode, unicodeChar, altUnicodeChar)
+    }
+
+    private fun handleInternal(keyCode: Int, unicodeChar: Int, altUnicodeChar: Int): Boolean = when (keyCode) {
 
         KeyEvent.KEYCODE_CALL -> {
             val state = viewModel.uiState.value

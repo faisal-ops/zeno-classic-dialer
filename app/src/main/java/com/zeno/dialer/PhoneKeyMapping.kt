@@ -48,4 +48,13 @@ object PhoneKeyMapping {
 
     fun keyCodeToDtmfChar(keyCode: Int): Char? =
         keyCodeToPhoneChar(keyCode) ?: qwertyKeyCodeToDigit(keyCode)
+
+    /**
+     * KEYCODE_GRAVE (Q25 currency/speaker key) and KEYCODE_VOLUME_MUTE (Q25 side mute key) are
+     * repurposed as hardware toggles during a call (see ButtonInterceptService) — they must never
+     * be treated as typing/DTMF input while a call is active, even though this device's keymap
+     * happens to resolve a phone-keypad-equivalent character for them (e.g. GRAVE -> '4').
+     */
+    fun isRepurposedCallHardwareKey(keyCode: Int): Boolean =
+        keyCode == KeyEvent.KEYCODE_GRAVE || keyCode == KeyEvent.KEYCODE_VOLUME_MUTE
 }
